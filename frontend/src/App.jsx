@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from './lib/AuthContext'
 
 
 function AppContent() {
-  const { handleAuthCallback, isAuthenticated } = useAuth()
+  const { handleAuthCallback, isAuthenticated, loading } = useAuth()
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -35,7 +35,17 @@ function AppContent() {
         <Route 
           path="/home" 
           element={
-            isAuthenticated ? <Home /> : <Navigate to="/" replace />
+            loading ? (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                  <h1 className="text-xl font-semibold">Loading...</h1>
+                </div>
+              </div>
+            ) : isAuthenticated ? (
+              <Home />
+            ) : (
+              <Navigate to="/" replace />
+            )
           } 
         />
       </Routes>

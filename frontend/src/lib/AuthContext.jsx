@@ -24,14 +24,13 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     checkAuth()
     
-    // Check token validity every 5 minutes
     const interval = setInterval(() => {
       const stillAuthenticated = authService.isAuthenticated()
       if (!stillAuthenticated) {
         setUser(null)
         setLoading(false)
       }
-    }, 5 * 60 * 1000) // 5 minutes
+    }, 5 * 60 * 1000)
     
     return () => clearInterval(interval)
   }, [])
