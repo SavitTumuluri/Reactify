@@ -1,10 +1,15 @@
 import express from 'express';
+import userRoutes from './userRoutes.js';
+import canvaRoutes from './canvaRoute.js';
 
 const router = express.Router();
-
-// Basic health check routes
 router.get('/', (_req, res) => {
   res.json({ message: 'Backend server is running!' });
 });
+
+// API routes
+router.use('/users', userRoutes);
+router.use('/canvas', canvaRoutes);
+
 
 export default router;
