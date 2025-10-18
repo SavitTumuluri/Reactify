@@ -1,31 +1,58 @@
 import React from 'react'
 import {NewEditableText} from "./test"
+import {Draggable} from "./Draggable"
+function DraggableStatic({children,style,className}) {
+        const content =
+        typeof children === "function"
+        ? children({dragging:false, position: {x:565,y:101} })
+        : children;
+        const wrapperStyle = {
+        transform: "translate(565px, 101px)",
+        touchAction: "none",
+        ...style,
+    };
 
-const EditorPage = () => {
-  return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Future Canvas
-            </h1>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex justify-center items-center">
+        return (
         <div
-          id="future-canvas"
-          className="w-full h-[70vh] bg-white rounded-lg shadow border border-gray-200"
+        className={["inline-block select-none", className].filter(Boolean).join(" ")}
+        style={wrapperStyle}
+        tabIndex={0}
         >
-            <NewEditableText></NewEditableText>
-        </div>
-      </main>
-    </div>
-  )
-}
+        {content}
+        </div>)
+    }
 
-export default EditorPage
+export default function EditorPage() {
+  return (
+    <div style={{ padding: 24, display: "grid", gap: 24 }}>
+      <section>
+        <h3>Free drag (bounded to parent)</h3>
+        <div
+          style={{
+            position: "relative",
+            height: 260,
+            border: "1px solid #e5e7eb",
+            borderRadius: 16,
+            overflow: "hidden",
+            background: "#fff",
+          }}
+        >
+          <DraggableStatic constrainToParent>
+            <div
+              style={{
+                width: 160,
+                height: 80,
+                borderRadius: 16,
+                background: "#eef2ff",
+                display: "grid",
+                placeItems: "center",
+                boxShadow: "0 6px 16px rgba(0,0,0,.08)",
+              }}
+            >
+              Drag me
+            </div>
+          </DraggableStatic>
+        </div>
+      </section>
+    </div>)
+}
