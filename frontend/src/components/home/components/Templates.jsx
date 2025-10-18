@@ -39,7 +39,7 @@ const Templates = ({ onItemClick }) => {
       setLoading(false)
     }
   }
-
+  
   const handleLike = async (e, canvaId) => {
     e.stopPropagation() // Prevent triggering onItemClick
     
@@ -69,7 +69,6 @@ const Templates = ({ onItemClick }) => {
     .sort((a, b) => {
       if (sortBy === 'likes') return (b.likes || 0) - (a.likes || 0)
       if (sortBy === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-      if (sortBy === 'views') return (b.views || 0) - (a.views || 0)
       return 0
     })
 
