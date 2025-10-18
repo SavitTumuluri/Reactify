@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   MagnifyingGlassIcon, 
   AdjustmentsHorizontalIcon,
@@ -8,54 +8,81 @@ import {
   PlusIcon,
   TrashIcon
 } from '@heroicons/react/24/outline'
+import { canvasService } from '../../../lib/canvasService'
+import { useAuth } from '../../../lib/AuthContext'
 
 const YourDesigns = ({ onItemClick }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newCanvasName, setNewCanvasName] = useState('')
-  
+  const [canvases, setCanvases] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { user } = useAuth()
 
-  // REPLACE WITH USEEFFECT
-  const [canvases, setCanvases] = useState([
-    {
-      id: 'canvas-001',
-      name: 'My First Canvas',
-      timestamp: new Date().toISOString(),
-      data: { bounds: { w: 1200, h: 800 } },
-      preview: '🎨'
-    }
-  ])
-
-  const handleCreateCanvas = () => {
-    if (newCanvasName.trim()) {
-      console.log('Creating new canvas:', newCanvasName.trim())
-
-      // ADD THE FUNCITON HERE PLZ
+  // Fetch canvases from API
+  useEffect(() => {
+    const fetchCanvases = async () => {
+      if (!user) return
       
-      const newCanvas = {
-        id: `canvas-${Date.now()}`,
-        name: newCanvasName.trim(),
-        timestamp: new Date().toISOString(),
-        data: { bounds: { w: 1200, h: 800 } },
-        preview: '🎨'
+      try {
+        setLoading(true)
+        setError(null)
+        const fetchedCanvases = await canvasService.getAllCanvases()
+        setCanvases(fetchedCanvases)
+      } catch (err) {
+        console.error('Error fetching canvases:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
       }
-      
-      setCanvases(prev => [...prev, newCanvas])
-      setNewCanvasName('')
-      setShowCreateForm(false)
-      
-      // Automatically open the new canvas
-      handleLoadCanvas(newCanvas)
+    }
+
+    fetchCanvases()
+  }, [user])
+
+  const handleCreateCanvas = async () => {
+    if (newCanvasName.trim()) {
+      try {
+        setLoading(true)
+        console.log('Creating new canvas:', newCanvasName.trim())
+        
+        const newCanvas = await canvasService.createCanvas(newCanvasName.trim())
+        
+        // Add the new canvas to the list
+        setCanvases(prev => [...prev, newCanvas])
+        setNewCanvasName('')
+        setShowCreateForm(false)
+        
+        // Automatically open the new canvas
+        handleLoadCanvas(newCanvas)
+      } catch (err) {
+        console.error('Error creating canvas:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
-  // Mock function for deleting canvas
-  const handleDeleteCanvas = (canvasId, e) => {
+  const handleDeleteCanvas = async (canvasId, e) => {
     e.stopPropagation()
-    console.log('Deleting canvas:', canvasId)
     
     if (window.confirm('Are you sure you want to delete this canvas?')) {
-      setCanvases(prev => prev.filter(canvas => canvas.id !== canvasId))
+      try {
+        setLoading(true)
+        console.log('Deleting canvas:', canvasId)
+        
+        await canvasService.deleteCanvas(canvasId)
+        
+        // Remove the canvas from the list
+        setCanvases(prev => prev.filter(canvas => canvas.canvasId !== canvasId))
+      } catch (err) {
+        console.error('Error deleting canvas:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -63,15 +90,15 @@ const YourDesigns = ({ onItemClick }) => {
   const handleLoadCanvas = (canvas) => {
     console.log('Loading canvas:', canvas)
     onItemClick({
-      id: canvas.id,
-      title: canvas.name || `Canvas ${canvas.id.slice(-8)}`,
+      id: canvas.canvasId,
+      title: canvas.name || `Canvas ${canvas.canvasId?.slice(-8)}`,
       type: 'canvas',
-      canvasData: canvas.data,
+      canvasData: canvas.canvasData || {},
       timestamp: canvas.timestamp,
-      preview: canvas.preview,
+      preview: '🎨',
       size: 'Auto-saved',
-      dimensions: canvas.data?.bounds ? `${canvas.data.bounds.w}x${canvas.data.bounds.h}` : '1200x800',
-      lastModified: new Date(canvas.timestamp).toLocaleDateString(),
+      dimensions: canvas.canvasData?.bounds ? `${canvas.canvasData.bounds.w}x${canvas.canvasData.bounds.h}` : '1200x800',
+      lastModified: canvas.timestamp ? new Date(canvas.timestamp).toLocaleDateString() : 'Unknown',
       createdBy: 'You',
       tags: ['canvas', 'design']
     })
@@ -79,23 +106,23 @@ const YourDesigns = ({ onItemClick }) => {
 
   // Filter canvases based on search query
   const filteredCanvases = canvases.filter(canvas =>
-    canvas && canvas.id && (canvas.name || `Canvas ${canvas.id.slice(-8)}`).toLowerCase().includes(searchQuery.toLowerCase())
+    canvas && canvas.canvasId && (canvas.name || `Canvas ${canvas.canvasId.slice(-8)}`).toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   // Convert canvases to design format for display
   const canvasDesigns = filteredCanvases.map(canvas => ({
-    id: canvas.id,
-    title: canvas.name || `Canvas ${canvas.id?.slice(-8) || 'Unknown'}`,
+    id: canvas.canvasId,
+    title: canvas.name || `Canvas ${canvas.canvasId?.slice(-8) || 'Unknown'}`,
     status: 'blue',
     time: canvas.timestamp ? new Date(canvas.timestamp).toLocaleDateString() : 'Unknown',
-    preview: canvas.preview,
+    preview: '🎨',
     type: 'canvas',
     size: 'Auto-saved',
-    dimensions: canvas.data?.bounds ? `${canvas.data.bounds.w}x${canvas.data.bounds.h}` : '1200x800',
+    dimensions: canvas.canvasData?.bounds ? `${canvas.canvasData.bounds.w}x${canvas.canvasData.bounds.h}` : '1200x800',
     lastModified: canvas.timestamp ? new Date(canvas.timestamp).toLocaleDateString() : 'Unknown',
     createdBy: 'You',
     tags: ['canvas', 'design'],
-    canvasData: canvas.data
+    canvasData: canvas.canvasData || {}
   }))
 
   const getStatusColor = (status) => {
@@ -181,6 +208,19 @@ const YourDesigns = ({ onItemClick }) => {
             </div>
           )}
 
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-900 border border-red-700 rounded-xl">
+              <p className="text-red-200">Error: {error}</p>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-8">
+              <p className="text-gray-400">Loading your canvases...</p>
+            </div>
+          )}
 
           {/* Design Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -228,7 +268,7 @@ const YourDesigns = ({ onItemClick }) => {
             ))}
 
             {/* Empty State */}
-            {canvasDesigns.length === 0 && (
+            {!loading && canvasDesigns.length === 0 && (
               <div className="col-span-full text-center py-12">
                 <div className="text-6xl mb-4">🎨</div>
                 <h3 className="text-xl font-semibold text-white mb-2">No canvases yet</h3>

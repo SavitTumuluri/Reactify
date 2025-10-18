@@ -1,7 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import HeroSection from './components/layout/hero-section'
-// import Home from './components/home/App'
+import Home from './components/home/App'
 import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 
@@ -32,7 +32,7 @@ function AppContent() {
           path="/" 
           element={<HeroSection />}
         />
-        {/* <Route 
+        <Route 
           path="/home" 
           element={
             loading ? (
@@ -47,7 +47,7 @@ function AppContent() {
               <Navigate to="/" replace />
             )
           } 
-        /> */}
+        />
       </Routes>
     </Router>
   )

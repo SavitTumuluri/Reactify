@@ -19,6 +19,7 @@ const PORT = process.env.PORT || 5006;
 app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
+app.use(express.json());
 
 // Routes
 app.use('/api', routes);
