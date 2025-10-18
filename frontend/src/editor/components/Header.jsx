@@ -15,7 +15,6 @@ import {
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { motion } from 'motion/react';
-import { uploadImageToS3 } from '../../lib/cdnService';
 import getStateManager from '../state/GlobalStateManager';
 
 const stateman = getStateManager()
@@ -37,7 +36,7 @@ export default function Header({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      await uploadImageToS3(file, { prefix: 'uploads/' });
+      console.log('File upload not implemented yet');
       // reset input so selecting the same file later retriggers change
       e.target.value = '';
       // Open gallery after upload so user can select the uploaded image

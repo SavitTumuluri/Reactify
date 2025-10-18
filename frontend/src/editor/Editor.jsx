@@ -4,6 +4,7 @@ import DragResize from "./components/DragResize";
 import CanvasContainer, { IRCanvasContainer } from "./components/Canvas";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
+import ImageGallery from "./components/ImageGallery";
 
 import { Save, Load } from "./state/Save";
 import { IRText } from "./components/NewEditableText";
@@ -200,9 +201,9 @@ export default function EditorPage() {
           </div>
 
           <ImageGallery
-            open={isGalleryOpen}
+            isOpen={isGalleryOpen}
             onClose={() => setIsGalleryOpen(false)}
-            onSelect={onSelectMedia}
+            onSelectImage={onSelectMedia}
           />
         </div>
       </div>

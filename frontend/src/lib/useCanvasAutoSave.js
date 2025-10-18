@@ -9,8 +9,8 @@ export const useCanvasAutoSave = (
   options = {}
 ) => {
   const {
-    autoSaveInterval = 2000, // (unused for now; debounce governs)
-    debounceDelay = 500,     // 500ms debounce
+    autoSaveInterval = 2000,
+    debounceDelay = 500,
     enabled = true,
     onSaveSuccess,
     onSaveError,
@@ -116,7 +116,6 @@ export const useCanvasAutoSave = (
     }
   }, [enabled, isConnected, canvasData, userId, canvasId, performSave]);
 
-  // ---- Propagate save status to callers ----
   useEffect(() => {
     if (lastSaveStatus) {
       if (lastSaveStatus.type === 'saved') {
@@ -127,7 +126,6 @@ export const useCanvasAutoSave = (
     }
   }, [lastSaveStatus, onSaveSuccess, onSaveError]);
 
-  // ---- Cleanup on unmount ----
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
@@ -138,7 +136,7 @@ export const useCanvasAutoSave = (
 
   return {
     isConnected,
-    isSaving: isSavingRef.current, // note: ref won't re-render the caller
+    isSaving: isSavingRef.current, 
     lastSaveStatus,
     lastError,
     manualSave,
