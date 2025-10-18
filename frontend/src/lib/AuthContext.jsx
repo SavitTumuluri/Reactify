@@ -23,16 +23,6 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuth()
-    
-    const interval = setInterval(() => {
-      const stillAuthenticated = authService.isAuthenticated()
-      if (!stillAuthenticated) {
-        setUser(null)
-        setLoading(false)
-      }
-    }, 5 * 60 * 1000)
-    
-    return () => clearInterval(interval)
   }, [])
 
   const login = () => {
