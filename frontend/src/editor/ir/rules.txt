@@ -1,0 +1,268 @@
+This guide assumes you’re comfortable with React hooks, controlled state, and code-gen patterns. It describes how to define IR types, wire them into interactive React components, and emit static React via toReact()/toImports()/toEffects(). It also clarifies history/undo semantics and common pitfalls.
+
+1) Mental model
+
+IR is a lightweight, serializable model object. IR instances form a tree (parent → children).
+
+Each IR node holds a _data bag for persistent (serializable) fields; transient UI state lives in React only.
+
+React is the source of truth for live interaction, with IR mirroring that state for persistence and codegen.
+
+History is recorded on IR state changes meant to be user-visible/undoable edits (create/move/resize/rotate/edit styles, delete, etc.).
+
+Rendering paths:
+
+Interactive editor: IR instance + an interactive component (e.g., DragResize) using ir.useState(...).
+
+Static export: traverse IR and synthesize code strings via toImports()/toEffects()/toReact() (e.g., DragResizeStatic).
+
+2) IR lifecycle: construction → init → interaction → serialization
+
+Construct your IR node in its parent’s context. Push a create history entry immediately:
+
+Example: IRRect calls history.pushUndoCreate(this, parent, index) after super(...).
+
+Mount the interactive component and call ir.init() exactly once per owning component.
+
+init() installs an internal useState to expose ir.forceReRender(), which parents can call when child updates won’t auto-rerender them.
+
+Bind interactive state with ir.useState(key, initial). This:
+
+Initializes from ir._data[key] (if present) or initial.
+
+Keeps IR mirror in sync via an effect.
+
+Returns a setter that records history (see §4).
+
+Serialize with ir.toJSON() (persist _data) and also persist the tree shape (parent/children) externally.
+
+Destroy with ir.unlink(). This removes the node from parent.children, triggers parent.forceReRender(), and pushes a delete history entry.
+
+Rule of thumb: if it must survive reload and appear in exported code, store it in IR (useState/set). If it’s purely ephemeral UI (hover, in-progress drag rubberband, temp selection rectangle), keep it in React local state not mirrored to IR.
+
+3) Hook API on IR
+ir.init()
+
+Must be called consistently (like any hook) at the top of your interactive component that owns the IR instance.
+
+It installs a tiny internal state so that ir.forceReRender() can be called later to bump renders of a component that reads from IR without being subscribed.
+
+ir.useState(key, initial)
+
+Mirrors a persistent field through a React useState.
+
+Return value: [value, setValue].
+
+History: setValue(next) pushes an undo with the previous value and clears redos.
+
+Mirroring: an effect writes the latest value into ir._data[key] so serialization/codegen see it.
+
+ir.get(key)
+
+Returns a snapshot from _data. It does not subscribe React to changes. Don’t rely on ir.get(...) for reactive updates; keep anything reactive in ir.useState(...).
+
+ir.set(key, value)
+
+Imperatively pushes a value into the corresponding React slot (via the stored setter).
+
+Because the setter records history, ir.set(...) also creates an undo step. Use it only for real user edits, not animation/hover/transient UI.
+
+ir.undoStateSet(key, valueToRestore)
+
+Intended for history engine only to restore a prior value without writing a new history record.
+
+Pitfall: as currently written it calls the same setter, which does push history. Your history engine should bypass the history-recording setter (e.g., provide a private, no-history setter path). See Pitfalls §9.1.
+
+4) History & undo/redo contract
+
+Create: push once on construction (pushUndoCreate).
+
+Delete: push once inside unlink() (pushUndoDelete with original index).
+
+Edits: every call to a useState setter (including via ir.set) pushes an undo record with the previous value and clears the redo stack.
+
+Atomicity: make user actions atomic. If a logical action updates multiple keys (e.g., posRel & sizeRel during resize), prefer:
+
+A history coalescing/grouping strategy (e.g., group keys by frame), or
+
+Only commit once (e.g., on pointerup) and keep in-flight movement as ephemeral React state.
+
+Don’t spam history during high-frequency updates. Either throttle/coalesce or stage and commit.
+
+5) Parent/child reactivity
+
+A child’s useState update does not auto rerender a parent that only uses ir.get(...). Use one of:
+
+Lift state if the parent needs to react, or
+
+Call parent.forceReRender() from the child when a parent-visible change occurs (e.g., structure/children changed).
+
+unlink() already calls parent.forceReRender().
+
+6) Authoring new IR node types
+Minimal IR node
+export class MyNode extends IRView {
+  constructor(parent, init = {}) {
+    const defaults = { posRel: {x:0.1,y:0.1}, sizeRel: {w:0.3,h:0.2}, styles: {/*…*/} };
+    super(parent, { ...defaults, ...(init ?? {}), styles: { ...defaults.styles, ...(init?.styles ?? {}) } });
+    history.pushUndoCreate(this, parent, this.parent.children.length - 1);
+  }
+
+  toComponent() { return MyInteractive; }       // for editor runtime
+  toImports()  { return ['import MyStatic from "./MyStatic"']; }
+  toEffects()  { return []; }                   // optional: emitted hook lines in export
+  toReact() {
+    const p = this.get("posRel"), s = this.get("sizeRel"), st = this.get("styles") ?? {};
+    const body = this.children.map(c => c.toReact()).join("\n");
+    return `<MyStatic posRel={{x:${p.x}, y:${p.y}}} sizeRel={{w:${s.w}, h:${s.h}}} styles={${JSON.stringify(st)}}>
+${body}
+</MyStatic>`;
+  }
+}
+
+Minimal interactive component
+export default function MyInteractive({ ir, bounds, onElementSelect, isSelected }) {
+  ir.init();                                   // install forceReRender
+
+  const [posRel, setPosRel] = ir.useState("posRel", {x:0.1,y:0.1});
+  const [sizeRel, setSizeRel] = ir.useState("sizeRel", {w:0.3,h:0.2});
+  const [styles, setStyles] = ir.useState("styles", {/* defaults */});
+
+  // Read-only convenience off the snapshot (OK; not reactive by itself)
+  const bg = (ir.get("styles") ?? {}).backgroundColor ?? "#fff";
+
+  // On real user edit, call the setters — these record history.
+  // For ephemeral motion, keep local React state and commit on pointerup.
+
+  return /* interactive UI using posRel/sizeRel/styles */;
+}
+
+7) Code generation (IRRoot traversal)
+
+IRRoot.toReact() traverses the tree and collects:
+
+toImports() → de-duplicated import lines.
+
+toEffects() → de-duplicated hook lines (strings placed at top of the generated component).
+
+child.toReact() → concatenated JSX strings per child (use the static counterparts of interactive widgets).
+
+Keep toReact() pure and deterministic: no DOM reads, no randomness. Read only from ir._data.
+
+toImports() should return complete lines, e.g. import DragResizeStatic from "./DragResizeStatic".
+
+toEffects() may return self-contained lines such as const [s,setS] = useState(null), but prefer keeping exports stateless unless you need effects at export time.
+
+8) Styles & defaults
+
+Merge style defaults immutably and additively; never clobber user-set keys:
+
+const existing = ir.get("styles") ?? {};
+const defaults = {/*…*/};
+if (Object.keys(defaults).some(k => existing[k] === undefined)) {
+  ir.set("styles", { ...defaults, ...existing });  // history-recording; do this once on mount
+}
+
+
+When reading styles in render, use local variables derived from ir.get("styles") or the styles state returned from ir.useState("styles", ...). Remember: get() is a snapshot — ensure the component otherwise re-renders (e.g., because something else used useState).
+
+9) Pitfalls & sharp edges
+9.1 undoStateSet must not write history
+
+Current implementation calls the same setter used by normal edits → recursively writes history.
+Fix: provide a hidden, no-history path (e.g., history.applyRestore(ir, key, value) that updates React state via a no-op reducer or a dedicated internal setter that does not push undo).
+
+9.2 Over-recording during drags/resizes
+
+Calling setPosRel/setSizeRel on every pointermove creates a massive undo stack.
+Approaches:
+
+Stage ephemeral values in React local state; commit once on pointerup with a single ir.set(...).
+
+Or implement history coalescing (frame-bundling keys like ["posRel","sizeRel"]).
+
+9.3 Multiple init() calls for one IR instance
+
+If multiple components call ir.init() on the same IR, you’ll overwrite forceReRender repeatedly and create extra hidden React states.
+Rule: only the component that owns the IR instance calls init().
+
+9.4 Assuming ir.get(...) is reactive
+
+It’s not. If you only get() without any useState, the component won’t re-render when the value changes elsewhere.
+
+9.5 Writing persistent state for temporary UI
+
+Don’t mirror transient UI (hover, live marquee) into IR. Keep it local; otherwise it pollutes history and serialization.
+
+9.6 Default merges that clobber user values
+
+Only fill missing keys; never reassign styles wholesale after the user has changed values.
+
+9.7 Parent not updating when children change
+
+Parents using only ir.get() snapshots won’t update on child edits. Use forceReRender() or lift the state.
+
+9.8 Bounds-dependent initialization
+
+Initial posRel/sizeRel derived from bounds must handle the “no bounds yet” case deterministically. Use sane fallbacks and avoid codegen depending on runtime DOM sizes.
+
+9.9 Memory/leaks in _setters
+
+Ensure setter entries are cleared when a component unmounts (or IR instance is discarded). Otherwise _setters can retain stale React dispatchers. Consider a cleanup path on component unmount.
+
+10) Deletion & structure changes
+
+Use ir.unlink() to remove a node:
+
+It splices from parent.children.
+
+Calls parent.forceReRender() so the UI drops the child immediately.
+
+Pushes a delete history entry with (node, parent, index) for accurate redo insertions.
+
+11) Choosing where to keep a value
+Kind of value	Where to keep	Why
+Position/size/angle	ir.useState(...)	Persistent + undoable
+Visual styles	ir.useState("styles", …)	Persistent + codegen
+Selection highlight	Local React state only	Ephemeral
+In-progress drag delta	Local React state (commit on end)	Avoids history spam
+DOM-measured numbers	Local React state	Non-deterministic; don’t serialize
+12) Static export shape
+
+Prefer emitting static counterparts (e.g., DragResizeStatic) that accept plain props (posRel, sizeRel, styles) with no hooks.
+
+Ensure exported code:
+
+Has a complete, de-duplicated import prelude from IRRoot.toImports().
+
+Optionally has effect prelude if you really need it (toEffects()), but keep exports as pure as possible.
+
+Contains child markup by concatenating child.toReact() in tree order.
+
+13) Example: IRRect + DragResize patterns to copy
+
+Construction merges default styles immutably; pushes create history.
+
+Interactive component calls ir.init(), binds posRel/sizeRel/angle/styles with ir.useState, and uses history-recording setters only for intended edits.
+
+Static export emits <DragResizeStatic ...> with literal props from ir.get(...) (snapshots), and children’s toReact() bodies inline.
+
+14) Review checklist before shipping a new IR node
+
+ Defaults merged additively; no clobbering of user styles.
+
+ init() called exactly once by the owner component.
+
+ All persistent fields wired via ir.useState(...) (not ad-hoc React state).
+
+ High-frequency interactions don’t spam history (coalesce or commit-on-end).
+
+ unlink() path tested (UI updates + delete history recorded).
+
+ toReact()/toImports()/toEffects() deterministic and side-effect free.
+
+ Parent reactivity handled (forceReRender() or lifted state) when structure changes.
+
+ No persistence of ephemeral UI.
+
+ History restore uses a no-history setter path (fix undoStateSet).

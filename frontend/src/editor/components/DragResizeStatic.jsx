@@ -3,7 +3,8 @@ import React from "react";
 
 /**
  * DragResizeStatic
- * Renders content at a fixed position/size/angle.
+ * Renders content at a fixed position/size/angle with advanced styling support.
+ * Supports different shape types: rectangle, circle, triangle, star.
  *
  * You can provide absolute pixel values OR relative values:
  *   - Absolute: pos {x,y} in px, size {w,h} in px
@@ -18,7 +19,9 @@ import React from "react";
  *  - posRel?: { x: number, y: number }    // 0..1
  *  - sizeRel?:{ w: number, h: number }    // 0..1
  *  - angle?:  number (degrees)
+ *  - shapeType?: 'rectangle' | 'circle' | 'triangle' | 'star'  // shape type
  *  - className?, style?, showFrame?, borderRadius?
+ *  - styles?: object with backgroundColor, borderWidth, borderStyle, borderColor, borderRadius, boxShadow, overflow, clipPath
  *  - children: node | ({ posRel, sizeRel, posPx, sizePx, angle }) => node
  */
 export default function DragResizeStatic({
@@ -28,14 +31,22 @@ export default function DragResizeStatic({
   posRel,
   sizeRel,
   angle = 0,
+  shapeType = 'rectangle',
   className,
   style,
   showFrame = true,
   borderRadius = 12,
+  styles = {},
   children,
 }) {
   const bw = Math.max(1, bounds?.w ?? bounds?.width ?? 0);
   const bh = Math.max(1, bounds?.h ?? bounds?.height ?? 0);
+
+  // Shape type detection
+  const isCircle = shapeType === 'circle';
+  const isTriangle = shapeType === 'triangle';
+  const isStar = shapeType === 'star';
+  const isRect = shapeType === 'rectangle';
 
   // Derive pixel layout from either relative or absolute props
   const hasRel = posRel || sizeRel;
@@ -50,6 +61,11 @@ export default function DragResizeStatic({
     y: hasRel ? Math.round((posRel?.y ?? 0) * bh) : (pos?.y ?? 0),
     w: hasRel ? Math.round((sizeRel?.w ?? 0.2) * bw) : (size?.w ?? 200),
     h: hasRel ? Math.round((sizeRel?.h ?? 0.12) * bh) : (size?.h ?? 120),
+  };
+
+  // Helper to read from styles with fallback (matching DragResize)
+  const readStyle = (key, fallback) => {
+    return styles[key] ?? fallback;
   };
 
   const outerStyle = {
@@ -72,12 +88,13 @@ export default function DragResizeStatic({
   const contentBoxStyle = {
     width: "100%",
     height: "100%",
-    borderRadius,
-    overflow: "hidden",
-    background: "#fff",
-    ...(showFrame
-      ? { border: "1px solid #e5e7eb", boxShadow: "0 6px 16px rgba(0,0,0,.06)" }
-      : null),
+    borderRadius: readStyle("borderRadius", isCircle ? "50%" : isTriangle || isStar ? "0px" : borderRadius),
+    background: readStyle("backgroundColor", "#ffffff"),
+    border: `${readStyle("borderWidth", "1px")} ${readStyle("borderStyle", "solid")} ${readStyle("borderColor", "#e5e7eb")}`,
+    boxShadow: readStyle("boxShadow", "0 6px 16px rgba(0,0,0,.06)"),
+    overflow: readStyle("overflow", "hidden"),
+    ...(isTriangle && { clipPath: readStyle("clipPath", "polygon(50% 0%, 0% 100%, 100% 100%)") }),
+    ...(isStar && { clipPath: readStyle("clipPath", "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)") }),
   };
 
   const content =

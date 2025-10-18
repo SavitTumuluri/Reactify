@@ -1,82 +1,89 @@
 // src/components/ui/DragResize.jsx
 import React, { useEffect, useRef } from "react";
-import { IR, IRView } from "./IR";
-
-/** IR record (relative pos/size + rotation) */
-export class IRRect extends IRView {
-  constructor(parent, init = {}) {
-    super(parent, {
-      // Optional config that used to be props:
-      config: {
-        minSize: { w: 60, h: 40 },
-        grid: null, // e.g. { x: 10, y: 10 } in px
-        rotationSnap: 15,
-        className: "",
-        style: {},
-        selected: false,
-      },
-      ...init,
-    });
-  }
-  toComponent() {
-    return DragResize;
-  }
-  toReact() {
-    const posRel = this.get("posRel");
-    const sizeRel = this.get("sizeRel");
-    const angle = this.get("angle");
-    const body = this.children.map((c) => c.toReact()).join("\n");
-    return `<DragResizeStatic posRel={{x:${posRel.x}, y:${posRel.y}}} sizeRel={{w:${sizeRel.w}, h:${sizeRel.h}}} angle={${angle}}>${body}\n</DragResizeStatic>`;
-  }
-  toImports() {
-    return ['import DragResizeStatic from "./DragResizeStatic"'];
-  }
-}
+import { RegisterComponent } from "../state/ComponentRegistry";
 
 /**
- * DragResize — API: { ir, bounds }
- * - robust transform strings
- * - global listeners on window (not a pointer-events:none wrapper)
- * - safe init when bounds are known; prefer IR state
- * - no behavior change to resize/rotate/snap/clamp
+ * DragResize — API: { ir, bounds, onElementSelect, isSelected, elementId }
+ * - Uses IR.styles for visual CSS only
+ * - Non-CSS behavior knobs use hardcoded defaults (minSize, grid, rotationSnap)
  */
-export default function DragResize({ ir, bounds }) {
+export default function DragResize({ ir, bounds, onElementSelect, isSelected, elementId }) {
+  ir.init();
 
-  // --- Config (optional) stored in IR; safe fallbacks ---
-  const cfg = ir?.get?.("config") ?? {};
-  const minSize = cfg.minSize ?? { w: 60, h: 40 };
-  const grid = cfg.grid ?? null;
-  const rotationSnap = Number.isFinite(cfg.rotationSnap) ? cfg.rotationSnap : 15;
-  const className = typeof cfg.className === "string" ? cfg.className : "";
-  const style = typeof cfg.style === "object" && cfg.style ? cfg.style : {};
-  const selected = !!cfg.selected;
-  const onSelect = typeof cfg.onSelect === "function" ? cfg.onSelect : () => {};
+  // Simple component - no special shape detection
 
-  // --- Bounds ---
+  // ---- Hardcoded behavior defaults (replacing former cfg) ----
+  const minSize = { w: 60, h: 40 };
+  const grid = null;               // e.g. { x: 10, y: 10 }
+  const rotationSnap = 15;         // degrees
+  const className = "";            // no className in styles; keep empty
+
+  // Checkpoint logger (integration hint for history saves)
+  const checkpoint = () => {
+    // Single, consistent message for the theoretical refactor
+    console.log("Detected a reasonable checkpoint: This would save state here!");
+  };
+
+  // Float comparison helpers to avoid noise
+  const approxEq = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
+  const posChanged = (a, b) => !(approxEq(a.x, b.x) && approxEq(a.y, b.y));
+  const sizeChanged = (a, b) => !(approxEq(a.w, b.w) && approxEq(a.h, b.h));
+  const angleChanged = (a, b) => {
+    // Normalize to [0, 360)
+    const norm = (t) => ((t % 360) + 360) % 360;
+    return !approxEq(norm(a), norm(b));
+  };
+
+  // no generic "style" bag; visual tweaks come from ir.styles only
+  const [styles, setStyles] = ir.useState("styles", {});
+  // Ensure styles object exists with sensible defaults (immutably)
+  useEffect(() => {
+    const existing = ir.get?.("styles") ?? {};
+    const defaults = {
+      backgroundColor: "#ffffff",
+      borderWidth: "1px",
+      borderStyle: "solid",
+      borderColor: "#e5e7eb",
+      borderRadius: isCircle ? "50%" : isTriangle || isStar ? "0px" : "12px",
+      boxShadow: "0 6px 16px rgba(0,0,0,.06)",
+      overflow: "hidden",
+      ...(isTriangle && { clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }),
+      ...(isStar && { clipPath: "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)" }),
+    };
+    const needsMerge = Object.keys(defaults).some((k) => existing[k] === undefined);
+    if (needsMerge) ir.set("styles", { ...defaults, ...existing });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ir, isCircle, isTriangle, isStar]);
+
+  // helper to read from styles with fallback
+  const readStyle = (key, fallback) => {
+    const s = ir.get?.("styles") ?? {};
+    return s[key] ?? fallback;
+  };
+
+  // ---- Bounds ----
   const bwRaw = bounds?.w ?? bounds?.width ?? 0;
   const bhRaw = bounds?.h ?? bounds?.height ?? 0;
   const hasBounds = bwRaw > 0 && bhRaw > 0;
-  // When unknown, keep 1 to avoid NaN/Infinity, but also avoid re-deriving initial rel state
   const bw = hasBounds ? bwRaw : 1;
   const bh = hasBounds ? bhRaw : 1;
 
   const toRel = (v, total) => (total > 0 ? v / total : 0);
   const toPx = (v, total) => Math.round(v * total);
 
-  // --- Initial px defaults (only used if IR has no value AND bounds are known) ---
+  // ---- Initial px defaults (only used if IR has no value AND bounds are known) ----
   const _initialPosPx = { x: 24, y: 24 };
   const _initialSizePx = { w: 220, h: 120 };
 
-  // Prefer IR existing state; otherwise derive sensible defaults when bounds are known
   const initialPosRelFallback = hasBounds
     ? { x: toRel(_initialPosPx.x, bw), y: toRel(_initialPosPx.y, bh) }
     : { x: 0, y: 0 };
 
   const initialSizeRelFallback = hasBounds
     ? { w: toRel(_initialSizePx.w, bw), h: toRel(_initialSizePx.h, bh) }
-    : { w: 0.1, h: 0.1 }; // minimal safe default until bounds arrive
+    : { w: 0.1, h: 0.1 };
 
-  // --- IR-backed state (do not fight existing IR values) ---
+  // ---- IR-backed state ----
   const [posRel, setPosRel] = ir.useState("posRel", initialPosRelFallback);
   const [sizeRel, setSizeRel] = ir.useState("sizeRel", initialSizeRelFallback);
   const [angle, setAngle] = ir.useState("angle", 0);
@@ -86,6 +93,9 @@ export default function DragResize({ ir, bounds }) {
 
   // drag
   const draggingRef = useRef(false);
+  const pressingRef = useRef(false);
+  const pressDownAt = useRef({ x: 0, y: 0 });
+  const downTargetRef = useRef(null);
   const dragOrigin = useRef({ x: 0, y: 0 });
   const dragStartRel = useRef({ x: posRel.x, y: posRel.y });
 
@@ -132,16 +142,25 @@ export default function DragResize({ ir, bounds }) {
     return { x, y, w, h };
   };
 
-  // --- drag ---
+  // ---- drag ----
+  const isEditableTarget = (el) => {
+    if (!el) return false;
+    const tag = (el.tagName || "").toUpperCase();
+    if (el.isContentEditable) return true;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+    return false;
+  };
+
   const onDragDown = (e) => {
-    if (e.target.dataset.handle || e.target.dataset.rotate) return;
-    onSelect();
-    e.stopPropagation();
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    draggingRef.current = true;
-    dragOrigin.current = { x: e.clientX, y: e.clientY };
-    // capture current rel at the moment of pointer down
+    if (e.target?.dataset?.handle || e.target?.dataset?.rotate) return;
+    if ((e.detail ?? 1) >= 2) return;
+    if (isEditableTarget(e.target)) return;
+    onElementSelect?.(ir);
+    pressDownAt.current = { x: e.clientX, y: e.clientY };
+    dragOrigin.current  = { x: e.clientX, y: e.clientY };
     dragStartRel.current = { x: posRel.x, y: posRel.y };
+    pressingRef.current = true;
+    downTargetRef.current = e.currentTarget;
   };
   const onDragMove = (e) => {
     if (!draggingRef.current || resizingRef.current || rotatingRef.current) return;
@@ -156,11 +175,20 @@ export default function DragResize({ ir, bounds }) {
     const c = clampRel(snapped.x, snapped.y, sizeRel.w, sizeRel.h);
     setPosRel({ x: c.x, y: c.y });
   };
-  const onDragUp = () => (draggingRef.current = false);
+  const onDragUp = () => {
+    // Only consider a drag "checkpoint" if we were actually dragging and position changed
+    if (draggingRef.current) {
+      const changed = posChanged(posRel, dragStartRel.current);
+      if (changed) checkpoint();
+    }
+    draggingRef.current = false;
+    pressingRef.current = false;
+    downTargetRef.current = null;
+  };
 
-  // --- resize ---
+  // ---- resize ----
   const startResize = (handle) => (e) => {
-    onSelect();
+    onElementSelect?.(ir);
     e.stopPropagation();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     resizingRef.current = handle;
@@ -190,16 +218,30 @@ export default function DragResize({ ir, bounds }) {
     if (w < minRel.w) { if (h.includes("w")) x -= minRel.w - w; w = minRel.w; }
     if (ht < minRel.h) { if (h.includes("n")) y -= minRel.h - ht; ht = minRel.h; }
 
+    // For circles, maintain square aspect ratio only if Shift key is held
+    if (isCircle && e.shiftKey) {
+      const maxSize = Math.max(w, ht);
+      w = maxSize;
+      ht = maxSize;
+    }
+
     const snapped = snapRel(x, y, w, ht);
     const c = clampRel(snapped.x, snapped.y, snapped.w, snapped.h);
     setPosRel({ x: c.x, y: c.y });
     setSizeRel({ w: c.w, h: c.h });
   };
-  const endResize = () => (resizingRef.current = null);
+  const endResize = () => {
+    if (resizingRef.current) {
+      const posDidChange = posChanged({ x: posRel.x, y: posRel.y }, resizeStartPosRel.current);
+      const sizeDidChange = sizeChanged({ w: sizeRel.w, h: sizeRel.h }, resizeStartSizeRel.current);
+      if (posDidChange || sizeDidChange) checkpoint();
+    }
+    resizingRef.current = null;
+  };
 
-  // --- rotate ---
+  // ---- rotate ----
   const onRotateDown = (e) => {
-    onSelect();
+    onElementSelect?.(ir);
     e.stopPropagation();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     rotatingRef.current = true;
@@ -222,19 +264,37 @@ export default function DragResize({ ir, bounds }) {
     if (e.shiftKey && rotationSnap > 0) next = Math.round(next / rotationSnap) * rotationSnap;
     setAngle(((next % 360) + 360) % 360);
   };
-  const endRotate = () => (rotatingRef.current = false);
+  const endRotate = () => {
+    if (rotatingRef.current) {
+      if (angleChanged(angle, rotateStartAngleDeg.current)) checkpoint();
+    }
+    rotatingRef.current = false;
+  };
 
-  // --- global listeners on window (robust) ---
+  // ---- global listeners on window ----
   useEffect(() => {
     const move = (e) => {
       doResize(e);
-      onDragMove(e);
       doRotate(e);
+
+      if (!draggingRef.current && pressingRef.current) {
+        const dx = Math.abs(e.clientX - pressDownAt.current.x);
+        const dy = Math.abs(e.clientY - pressDownAt.current.y);
+        const threshold = 3;
+        if (dx > threshold || dy > threshold) {
+          draggingRef.current = true;
+          downTargetRef.current?.setPointerCapture?.(e.pointerId);
+        }
+      }
+
+      onDragMove(e);
     };
     const up = () => {
+      // Only one of these should have been active; call all safely in an order that avoids double-logging.
+      // Each end* function guards itself and logs at most once if it was actually active.
       endResize();
-      onDragUp();
       endRotate();
+      onDragUp();
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -247,7 +307,7 @@ export default function DragResize({ ir, bounds }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posRel, sizeRel, angle, bw, bh]);
 
-  // --- render in px (state is relative) ---
+  // ---- render in px ----
   const px = {
     x: toPx(posRel.x, bw),
     y: toPx(posRel.y, bh),
@@ -255,10 +315,10 @@ export default function DragResize({ ir, bounds }) {
     h: toPx(sizeRel.h, bh),
   };
 
-  // active when selected or interacting
-  const isActive = selected || draggingRef.current || !!resizingRef.current || rotatingRef.current;
+  const isActive =
+    !!isSelected || draggingRef.current || !!resizingRef.current || rotatingRef.current;
 
-  // --- styles (valid transform strings!) ---
+  // ---- styles (compose from IR.styles) ----
   const outerStyle = {
     position: "absolute",
     transform: `translate(${px.x}px, ${px.y}px)`,
@@ -268,7 +328,6 @@ export default function DragResize({ ir, bounds }) {
     touchAction: "none",
     overflow: "visible",
     outline: "none",
-    ...style,
   };
 
   const rotatedStyle = {
@@ -281,19 +340,26 @@ export default function DragResize({ ir, bounds }) {
   const contentBoxStyle = {
     width: "100%",
     height: "100%",
-    borderRadius: 12,
-    background: "#fff",
-    border: "1px solid #e5e7eb",
-    boxShadow: "0 6px 16px rgba(0,0,0,.06)",
-    overflow: "hidden",
+    borderRadius: readStyle("borderRadius", isCircle ? "50%" : isTriangle || isStar ? "0px" : "12px"),
+    background: readStyle("backgroundColor", "#fff"),
+    border: `${readStyle("borderWidth", "1px")} ${readStyle("borderStyle", "solid")} ${readStyle(
+      "borderColor",
+      "#e5e7eb"
+    )}`,
+    boxShadow: readStyle("boxShadow", "0 6px 16px rgba(0,0,0,.06)"),
+    overflow: readStyle("overflow", "hidden"),
+    ...(isTriangle && { clipPath: readStyle("clipPath", "polygon(50% 0%, 0% 100%, 100% 100%)") }),
+    ...(isStar && { clipPath: readStyle("clipPath", "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)") }),
   };
 
   const selectionFrameStyle = {
     position: "absolute",
     inset: 0,
-    borderRadius: 12,
+    borderRadius: readStyle("borderRadius", isCircle ? "50%" : isTriangle || isStar ? "0px" : "12px"),
     border: "2px solid rgba(59,130,246,.45)",
     pointerEvents: "none",
+    ...(isTriangle && { clipPath: readStyle("clipPath", "polygon(50% 0%, 0% 100%, 100% 100%)") }),
+    ...(isStar && { clipPath: readStyle("clipPath", "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)") }),
   };
 
   const handleStyle = (name) => {
@@ -306,7 +372,7 @@ export default function DragResize({ ir, bounds }) {
       borderRadius: 2,
       boxShadow: "0 0 0 1px rgba(0,0,0,.15)",
       touchAction: "none",
-      cursor: (
+      cursor:
         {
           n: "ns-resize",
           s: "ns-resize",
@@ -316,8 +382,7 @@ export default function DragResize({ ir, bounds }) {
           sw: "nesw-resize",
           nw: "nwse-resize",
           se: "nwse-resize",
-        }
-      )[name],
+        }[name],
     };
     const pad = -5;
     const posMap = {
@@ -359,11 +424,11 @@ export default function DragResize({ ir, bounds }) {
       ref={wrapRef}
       className={className}
       style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-      aria-selected={selected}
+      aria-selected={!!isSelected}
     >
       <div
         data-draggable
-        onPointerDown={onDragDown}
+        onPointerDownCapture={onDragDown}
         style={{ ...outerStyle, pointerEvents: "auto" }}
         tabIndex={0}
       >
@@ -384,3 +449,20 @@ export default function DragResize({ ir, bounds }) {
     </div>
   );
 }
+
+// Link IR classes to this interactive component without creating circular imports
+IRRect.prototype.toComponent = function() { return DragResize };
+IRCircle.prototype.toComponent = function() { return DragResize };
+IRTriangle.prototype.toComponent = function() { return DragResize };
+IRStar.prototype.toComponent = function() { return DragResize };
+
+// Re-export for existing import sites
+export { IRRect } from "../ir/IRRect";
+export { IRCircle } from "../ir/IRCircle";
+export { IRTriangle } from "../ir/IRTriangle";
+export { IRStar } from "../ir/IRStar";
+
+RegisterComponent(IRRect);
+RegisterComponent(IRCircle);
+RegisterComponent(IRTriangle);
+RegisterComponent(IRStar);

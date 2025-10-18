@@ -12,17 +12,18 @@ import React, { Children, cloneElement, isValidElement } from "react";
  * Props:
  *  - size:          { w:number, h:number }   // required-ish; defaults provided
  *  - workplaceBg:   string                   // outer workspace background
+ *  - canvasBackground: string               // inner canvas background color
  *  - componentName: string                   // label/id metadata (optional)
  *  - className?:    string
  *  - style?:        React.CSSProperties      // applied to the outer workspace
  *  - children:      ReactNode | (args:{bounds:{w,h}})=>ReactNode
  *
- * Note: The inner document background uses a good-looking default (#fff).
- * If you want it configurable, pass a styled wrapper as a child or extend props.
+ * Note: The inner document background defaults to white but can be customized via canvasBackground prop.
  */
 export default function GraphicBox({
   size = { w: 1200, h: 800 },
-  workplaceBg = "#f3f4f6",
+  workplaceBg = "transparent",
+  canvasBackground = "#ffffff",
   componentName = "GraphicBox",
   className,
   style,
@@ -46,14 +47,16 @@ export default function GraphicBox({
   };
 
   // The actual "document" area (absolute children position against this box)
+  const isTransparent = canvasBackground === "transparent" || canvasBackground === "rgba(0, 0, 0, 0)" || canvasBackground === "rgba(0,0,0,0)";
+  
   const canvasStyle = {
     position: "relative",
     width: bounds.w,
     height: bounds.h,
-    background: "#ffffff", // document background (good default)
-    borderRadius: 16,
-    boxShadow: "0 12px 28px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.06)",
-    border: "1px solid rgba(0,0,0,.06)",
+    background: canvasBackground,
+    borderRadius: isTransparent ? 0 : 16,
+    boxShadow: isTransparent ? "none" : "0 12px 28px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.06)",
+    border: isTransparent ? "none" : "1px solid rgba(0,0,0,.06)",
     overflow: "hidden",
   };
 
