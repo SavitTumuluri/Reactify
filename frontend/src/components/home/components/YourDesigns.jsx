@@ -99,8 +99,7 @@ const YourDesigns = ({ onItemClick }) => {
       size: 'Auto-saved',
       dimensions: canvas.canvasData?.bounds ? `${canvas.canvasData.bounds.w}x${canvas.canvasData.bounds.h}` : '1200x800',
       lastModified: canvas.timestamp ? new Date(canvas.timestamp).toLocaleDateString() : 'Unknown',
-      createdBy: 'You',
-      tags: ['canvas', 'design']
+      createdBy: 'You'
     })
   }
 
@@ -121,7 +120,6 @@ const YourDesigns = ({ onItemClick }) => {
     dimensions: canvas.canvasData?.bounds ? `${canvas.canvasData.bounds.w}x${canvas.canvasData.bounds.h}` : '1200x800',
     lastModified: canvas.timestamp ? new Date(canvas.timestamp).toLocaleDateString() : 'Unknown',
     createdBy: 'You',
-    tags: ['canvas', 'design'],
     canvasData: canvas.canvasData || {}
   }))
 

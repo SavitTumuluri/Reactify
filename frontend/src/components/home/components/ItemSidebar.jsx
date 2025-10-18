@@ -1,5 +1,5 @@
 import React from 'react'
-import { XMarkIcon, StarIcon, HeartIcon, ArrowDownTrayIcon, CalendarIcon, UserIcon, TagIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, StarIcon, HeartIcon, ArrowDownTrayIcon, CalendarIcon, UserIcon } from '@heroicons/react/24/outline'
 
 const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
   if (!isOpen || !item) return null
@@ -106,23 +106,6 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
                 </>
               )}
             </div>
-          {/* Tags */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <TagIcon className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-400">Tags</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {item.tags?.map((tag, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-purple-600 text-white text-xs rounded-full"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
 
           {/* Additional Info */}
           {isTemplate && (
