@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import HeroSection from './components/layout/hero-section'
+import Home from './components/home'
 import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 
@@ -30,6 +31,12 @@ function AppContent() {
         <Route 
           path="/" 
           element={<HeroSection />}
+        />
+        <Route 
+          path="/home" 
+          element={
+            isAuthenticated ? <Home /> : <Navigate to="/" replace />
+          } 
         />
       </Routes>
     </Router>

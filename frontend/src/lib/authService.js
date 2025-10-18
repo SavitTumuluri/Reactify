@@ -113,7 +113,31 @@ export class AuthService {
 
   isAuthenticated() {
     const sessionData = localStorage.getItem('auth0_session');
-    return !!sessionData;
+    if (!sessionData) return false;
+    
+    try {
+      const session = JSON.parse(sessionData);
+      const tokens = session.tokens;
+      
+      // Check if access token exists and is not expired
+      if (!tokens?.access_token) return false;
+      
+      // Decode JWT to check expiration (basic check)
+      const payload = JSON.parse(atob(tokens.access_token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      // If token is expired, clear session
+      if (payload.exp < currentTime) {
+        localStorage.removeItem('auth0_session');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error validating token:', error);
+      localStorage.removeItem('auth0_session');
+      return false;
+    }
   }
 
   getCurrentUser() {
