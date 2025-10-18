@@ -1,0 +1,215 @@
+// config/dynamodb.js
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  GetCommand,
+  DeleteCommand,
+  QueryCommand,
+} from '@aws-sdk/lib-dynamodb';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// ---- DynamoDB clients ----
+const client = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+const docClient = DynamoDBDocumentClient.from(client);
+
+// ---- Helpers ----
+/**
+ * Ensure canvasData is an object (not a string), parsing when needed.
+ * Also de-stringify canvasData.ir if it happens to be a JSON string.
+ */
+function normalizeCanvasData(maybeData) {
+  let data = maybeData;
+
+  // If the whole canvasData is stored as a string, parse it
+  if (typeof data === 'string') {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      // keep as string if it can't be parsed
+      return maybeData;
+    }
+  }
+
+  // If IR is a stringified JSON, parse it to an object
+  if (data && typeof data.ir === 'string') {
+    try {
+      data.ir = JSON.parse(data.ir);
+    } catch {
+      // ignore if it can't be parsed
+    }
+  }
+
+  return data;
+}
+
+/**
+ * Prepare canvasData for storage: keep as a JSON string in DynamoDB.
+ * If ir is an object, we can keep it as is; the whole canvasData is stringified anyway.
+ */
+function serializeCanvasDataForStorage(canvasData) {
+  try {
+    return JSON.stringify(canvasData);
+  } catch {
+    // As a last resort, store a minimal payload
+    return JSON.stringify({ error: 'Failed to serialize canvasData' });
+  }
+}
+
+// ---- Services ----
+export class CanvasDataService {
+  constructor() {
+    this.tableName = process.env.DYNAMODB_TABLE_NAME || 'reactify-canvas-data';
+  }
+
+  /**
+   * Upsert canvas data
+   */
+  async saveCanvasData(userId, canvasId, canvasData, canvasName = null) {
+    try {
+      const now = new Date().toISOString();
+
+      const params = {
+        TableName: this.tableName,
+        Item: {
+          // IMPORTANT: match table keys exactly
+          userId: userId,
+          canvasId: canvasId,
+          // Store as JSON string; we'll parse on reads
+          canvasData: serializeCanvasDataForStorage(canvasData),
+          name: canvasName || `Canvas ${canvasId.slice(-8)}`,
+          timestamp: now,
+          updatedAt: now,
+        },
+      };
+
+      await docClient.send(new PutCommand(params));
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving canvas data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a single canvas
+   * Returns: { userId, canvasId, name, timestamp, updatedAt, canvasData: <object> } | undefined
+   */
+  async getCanvasData(userId, canvasId) {
+    try {
+      const params = {
+        TableName: this.tableName,
+        Key: {
+          userId: userId,
+          canvasId: canvasId,
+        },
+      };
+
+      const result = await docClient.send(new GetCommand(params));
+      if (!result.Item) return undefined;
+
+      const dataObj = normalizeCanvasData(result.Item.canvasData);
+
+      return {
+        ...result.Item,
+        canvasData: dataObj, // <-- object returned to callers
+      };
+    } catch (error) {
+      console.error('Error getting canvas data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List all canvases for a user
+   * Returns array of items with canvasData as an object (NOT a string)
+   */
+  async getUserCanvases(userId) {
+    try {
+      const params = {
+        TableName: this.tableName,
+        // MUST include the partition key in the KeyConditionExpression
+        KeyConditionExpression: 'userId = :uid',
+        ExpressionAttributeValues: {
+          ':uid': userId,
+        },
+      };
+
+      const result = await docClient.send(new QueryCommand(params));
+      const items = result.Items || [];
+
+      return items.map((item) => {
+        const parsed = normalizeCanvasData(item.canvasData);
+        return {
+          ...item,
+          canvasData: parsed, // <-- object returned to callers
+        };
+      });
+    } catch (error) {
+      console.error('Error getting user canvases:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a canvas
+   */
+  async deleteCanvasData(userId, canvasId) {
+    try {
+      const params = {
+        TableName: this.tableName,
+        Key: {
+          userId: userId,
+          canvasId: canvasId,
+        },
+      };
+
+      await docClient.send(new DeleteCommand(params));
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting canvas data:', error);
+      throw error;
+    }
+  }
+}
+
+export class UserService {
+  constructor() {
+    this.usersTableName = process.env.DYNAMODB_USERS_TABLE_NAME || 'users';
+  }
+
+  async getUserById(userId) {
+    try {
+      const params = {
+        TableName: this.usersTableName,
+        Key: { id: userId },
+      };
+      const result = await docClient.send(new GetCommand(params));
+      return result.Item;
+    } catch (error) {
+      console.error('Error getting user:', error);
+      throw error;
+    }
+  }
+
+  async verifyUserExists(userId) {
+    try {
+      const user = await this.getUserById(userId);
+      return !!user;
+    } catch (error) {
+      console.error('Error verifying user:', error);
+      return false;
+    }
+  }
+}
+
+export default docClient;
