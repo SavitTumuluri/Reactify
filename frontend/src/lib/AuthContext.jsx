@@ -27,14 +27,14 @@ export const AuthProvider = ({ children }) => {
     // Check token validity every 5 minutes
     const interval = setInterval(() => {
       const stillAuthenticated = authService.isAuthenticated()
-      if (!stillAuthenticated && user) {
+      if (!stillAuthenticated) {
         setUser(null)
         setLoading(false)
       }
     }, 5 * 60 * 1000) // 5 minutes
     
     return () => clearInterval(interval)
-  }, [user])
+  }, [])
 
   const login = () => {
     window.location.href = authService.getLoginUrl()
