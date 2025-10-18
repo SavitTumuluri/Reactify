@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../lib/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import { BriefcaseIcon, DocumentIcon } from '@heroicons/react/24/outline'
 import YourDesigns from './components/YourDesigns'
 import Templates from './components/Templates'
@@ -10,6 +11,7 @@ const Home = () => {
   const [activeTab, setActiveTab] = useState('your-designs')
   const [selectedItem, setSelectedItem] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     console.log('Home component mounted')
@@ -44,10 +46,11 @@ const Home = () => {
 
   const handleOpenDesign = () => {
     console.log('Opening design:', selectedItem)
-    // Mock function - just log to console
-    console.log('Would navigate to editor with canvas ID:', selectedItem?.id)
-    setSidebarOpen(false)
-    setSelectedItem(null)
+    if (selectedItem?.id) {
+      navigate(`/editor/${selectedItem.id}`)
+      setSidebarOpen(false)
+      setSelectedItem(null)
+    }
   }
 
   return (

@@ -2,6 +2,7 @@ import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import HeroSection from './components/layout/hero-section'
 import Home from './components/home/App'
+import Editor from './editor/Editor'
 import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 
@@ -47,6 +48,22 @@ function AppContent() {
               <Navigate to="/" replace />
             )
           } 
+        />
+        <Route 
+          path="/editor" 
+          element={
+            loading ? (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                  <h1 className="text-xl font-semibold">Loading...</h1>
+                </div>
+              </div>
+            ) : isAuthenticated ? (
+              <Editor />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
       </Routes>
     </Router>
