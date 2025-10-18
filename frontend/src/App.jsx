@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import HeroSection from './components/layout/hero-section'
 import Home from './components/home/App'
 import Editor from './editor/Editor'
+import Preview from './preview/Preview'
 import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 
@@ -60,6 +61,22 @@ function AppContent() {
               </div>
             ) : isAuthenticated ? (
               <Editor />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route 
+          path="/preview/:id" 
+          element={
+            loading ? (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                  <h1 className="text-xl font-semibold">Loading...</h1>
+                </div>
+              </div>
+            ) : isAuthenticated ? (
+              <Preview />
             ) : (
               <Navigate to="/" replace />
             )
