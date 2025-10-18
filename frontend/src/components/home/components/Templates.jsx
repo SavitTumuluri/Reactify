@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   MagnifyingGlassIcon, 
   AdjustmentsHorizontalIcon,
@@ -10,225 +10,101 @@ import {
 
 const Templates = ({ onItemClick }) => {
   const [searchQuery, setSearchQuery] = useState('')
-  const templates = [
-    { 
-      id: 1, 
-      title: 'Modern Portfolio', 
-      category: 'Portfolio',
-      rating: 4.8,
-      downloads: '2.3k',
-      preview: '💼',
-      featured: true,
-      price: 'Free',
-      author: 'Design Studio',
-      lastUpdated: '2025-09-15',
-      tags: ['portfolio', 'modern', 'responsive']
-    },
-    { 
-      id: 2, 
-      title: 'E-commerce Landing', 
-      category: 'E-commerce',
-      rating: 4.9,
-      downloads: '5.1k',
-      preview: '🛒',
-      featured: false,
-      price: '$29',
-      author: 'E-commerce Pro',
-      lastUpdated: '2025-09-20',
-      tags: ['ecommerce', 'landing', 'shop']
-    },
-    { 
-      id: 3, 
-      title: 'Blog Template', 
-      category: 'Blog',
-      rating: 4.7,
-      downloads: '1.8k',
-      preview: '📝',
-      featured: true,
-      price: 'Free',
-      author: 'Blog Master',
-      lastUpdated: '2025-09-10',
-      tags: ['blog', 'content', 'writing']
-    },
-    { 
-      id: 4, 
-      title: 'Corporate Website', 
-      category: 'Business',
-      rating: 4.6,
-      downloads: '3.2k',
-      preview: '🏢',
-      featured: false,
-      price: '$49',
-      author: 'Business Solutions',
-      lastUpdated: '2025-09-05',
-      tags: ['corporate', 'business', 'professional']
-    },
-    { 
-      id: 5, 
-      title: 'Creative Agency', 
-      category: 'Agency',
-      rating: 4.9,
-      downloads: '4.7k',
-      preview: '🎨',
-      featured: true,
-      price: '$39',
-      author: 'Creative Hub',
-      lastUpdated: '2025-09-18',
-      tags: ['agency', 'creative', 'portfolio']
-    },
-    { 
-      id: 6, 
-      title: 'Restaurant Menu', 
-      category: 'Food',
-      rating: 4.5,
-      downloads: '1.2k',
-      preview: '🍽️',
-      featured: false,
-      price: '$19',
-      author: 'Food Design',
-      lastUpdated: '2025-08-30',
-      tags: ['restaurant', 'food', 'menu']
-    },
-    { 
-      id: 7, 
-      title: 'SaaS Landing', 
-      category: 'SaaS',
-      rating: 4.8,
-      downloads: '6.1k',
-      preview: '💻',
-      featured: true,
-      price: '$59',
-      author: 'SaaS Experts',
-      lastUpdated: '2025-09-22',
-      tags: ['saas', 'landing', 'tech']
-    },
-    { 
-      id: 8, 
-      title: 'Photography Portfolio', 
-      category: 'Portfolio',
-      rating: 4.7,
-      downloads: '2.9k',
-      preview: '📸',
-      featured: false,
-      price: '$29',
-      author: 'Photo Studio',
-      lastUpdated: '2025-09-12',
-      tags: ['photography', 'portfolio', 'gallery']
-    },
-    { 
-      id: 9, 
-      title: 'Event Landing', 
-      category: 'Events',
-      rating: 4.4,
-      downloads: '1.5k',
-      preview: '🎉',
-      featured: false,
-      price: 'Free',
-      author: 'Event Pro',
-      lastUpdated: '2025-08-25',
-      tags: ['event', 'landing', 'celebration']
-    },
-    { 
-      id: 10, 
-      title: 'Fitness Studio', 
-      category: 'Health',
-      rating: 4.6,
-      downloads: '2.1k',
-      preview: '💪',
-      featured: false,
-      price: '$35',
-      author: 'Health Design',
-      lastUpdated: '2025-09-08',
-      tags: ['fitness', 'health', 'gym']
-    },
-    { 
-      id: 11, 
-      title: 'Real Estate', 
-      category: 'Real Estate',
-      rating: 4.5,
-      downloads: '3.8k',
-      preview: '🏠',
-      featured: false,
-      price: '$45',
-      author: 'Property Pro',
-      lastUpdated: '2025-09-14',
-      tags: ['real estate', 'property', 'housing']
-    },
-    { 
-      id: 12, 
-      title: 'Tech Startup', 
-      category: 'SaaS',
-      rating: 4.9,
-      downloads: '7.2k',
-      preview: '🚀',
-      featured: true,
-      price: '$69',
-      author: 'Startup Studio',
-      lastUpdated: '2025-09-25',
-      tags: ['startup', 'tech', 'innovation']
-    },
-    { 
-      id: 13, 
-      title: 'Wedding Planner', 
-      category: 'Events',
-      rating: 4.7,
-      downloads: '1.9k',
-      preview: '💍',
-      featured: false,
-      price: '$25',
-      author: 'Wedding Pro',
-      lastUpdated: '2025-09-03',
-      tags: ['wedding', 'events', 'celebration']
-    },
-    { 
-      id: 14, 
-      title: 'Coffee Shop', 
-      category: 'Food',
-      rating: 4.4,
-      downloads: '2.7k',
-      preview: '☕',
-      featured: false,
-      price: '$22',
-      author: 'Cafe Design',
-      lastUpdated: '2025-08-28',
-      tags: ['coffee', 'cafe', 'food']
-    },
-    { 
-      id: 15, 
-      title: 'Travel Blog', 
-      category: 'Blog',
-      rating: 4.8,
-      downloads: '4.3k',
-      preview: '✈️',
-      featured: true,
-      price: 'Free',
-      author: 'Travel Studio',
-      lastUpdated: '2025-09-16',
-      tags: ['travel', 'blog', 'adventure']
-    },
-    { 
-      id: 16, 
-      title: 'Law Firm', 
-      category: 'Business',
-      rating: 4.3,
-      downloads: '1.6k',
-      preview: '⚖️',
-      featured: false,
-      price: '$55',
-      author: 'Legal Design',
-      lastUpdated: '2025-08-20',
-      tags: ['law', 'legal', 'professional']
-    },
-  ]
+  const [templates, setTemplates] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [sortBy, setSortBy] = useState('likes')
 
-  // Filter templates based on search query
-  const filteredTemplates = templates.filter(template =>
-    template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    template.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+  useEffect(() => {
+    fetchTemplates()
+  }, [])
+
+  const fetchTemplates = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('http://localhost:5006/api/templates')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch templates')
+      }
+      
+      const data = await response.json()
+      setTemplates(data.templates || [])
+      setError(null)
+    } catch (err) {
+      console.error('Error fetching templates:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLike = async (e, canvaId) => {
+    e.stopPropagation() // Prevent triggering onItemClick
+    
+    try {
+      const response = await fetch(`http://localhost:5006/api/templates/${canvaId}/like`, {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        // Update local state
+        setTemplates(templates.map(t => 
+          t.canvaId === canvaId ? { ...t, likes: (t.likes || 0) + 1 } : t
+        ))
+      }
+    } catch (err) {
+      console.error('Error liking template:', err)
+    }
+  }
+
+  // Filter templates based on search query and category
+  const filteredTemplates = templates
+    .filter(template => {
+      const matchesSearch = template.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesCategory = selectedCategory === 'All' || template.category === selectedCategory
+      return matchesSearch && matchesCategory
+    })
+    .sort((a, b) => {
+      if (sortBy === 'likes') return (b.likes || 0) - (a.likes || 0)
+      if (sortBy === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+      if (sortBy === 'views') return (b.views || 0) - (a.views || 0)
+      return 0
+    })
 
   const categories = ['All', 'Portfolio', 'E-commerce', 'Blog', 'Business', 'Agency', 'Food', 'SaaS', 'Events']
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-400 text-lg">Loading templates...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-gray-800 rounded-xl p-8 text-center">
+        <div className="text-red-500 mb-4">
+          <svg className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-xl font-bold">Error Loading Templates</h3>
+        </div>
+        <p className="text-gray-400 mb-4">{error}</p>
+        <button 
+          onClick={fetchTemplates}
+          className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
+        >
+          Try Again
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -252,8 +128,9 @@ const Templates = ({ onItemClick }) => {
         {categories.map((category, index) => (
           <button
             key={index}
+            onClick={() => setSelectedCategory(category)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              index === 0 
+              selectedCategory === category
                 ? 'bg-purple-600 text-white' 
                 : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
             }`}
@@ -267,12 +144,18 @@ const Templates = ({ onItemClick }) => {
       <div className="bg-gray-800 rounded-xl p-6">
         <div className="relative z-10">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-white">Templates</h2>
+            <h2 className="text-xl font-bold text-white">
+              Templates ({filteredTemplates.length})
+            </h2>
             <div className="flex items-center space-x-4">
-              <select className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm">
-                <option>Most Popular</option>
-                <option>Newest</option>
-                <option>Highest Rated</option>
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm"
+              >
+                <option value="likes">Most Popular</option>
+                <option value="newest">Newest</option>
+                <option value="views">Most Viewed</option>
               </select>
               <div className="flex space-x-2">
                 <button className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">
@@ -286,45 +169,76 @@ const Templates = ({ onItemClick }) => {
           </div>
 
           {/* Template Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTemplates.map((template) => (
-              <div
-                key={template.id}
-                onClick={() => onItemClick(template)}
-                className="bg-gray-700 rounded-xl p-4 hover:bg-gray-600 transition-colors cursor-pointer group relative"
-              >
-                {template.featured && (
-                  <div className="absolute top-3 left-3 bg-yellow-500 text-black px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                    <StarIcon className="h-3 w-3" />
-                    Featured
-                  </div>
-                )}
-                
-                <div className="aspect-video bg-white rounded-lg mb-3 flex items-center justify-center text-4xl">
-                  {template.preview}
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-white truncate">{template.title}</h3>
-                    <button className="p-1 hover:bg-gray-600 rounded transition-colors">
-                      <HeartIcon className="h-4 w-4 text-gray-400 hover:text-red-500" />
-                    </button>
-                  </div>
-                  
-                  <p className="text-xs text-gray-400">{template.category}</p>
-                  
-                  <div className="flex items-center justify-between text-xs text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <StarIcon className="h-3 w-3 text-yellow-500" />
-                      <span>{template.rating}</span>
+          {filteredTemplates.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-6xl mb-4">📋</div>
+              <h3 className="text-xl font-semibold text-gray-400 mb-2">
+                {templates.length === 0 ? 'No templates yet' : 'No templates found'}
+              </h3>
+              <p className="text-gray-500">
+                {templates.length === 0 
+                  ? 'Be the first to share a template!' 
+                  : 'Try adjusting your search or filters'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTemplates.map((template) => (
+                <div
+                  key={template.canvaId}
+                  onClick={() => onItemClick && onItemClick(template)}
+                  className="bg-gray-700 rounded-xl p-4 hover:bg-gray-600 transition-colors cursor-pointer group relative"
+                >
+                  {(template.likes || 0) >= 10 && (
+                    <div className="absolute top-3 left-3 bg-yellow-500 text-black px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 z-10">
+                      <StarIcon className="h-3 w-3" />
+                      Popular
                     </div>
-                    <span>{template.downloads} downloads</span>
+                  )}
+                  
+                  <div className="aspect-video bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg mb-3 flex items-center justify-center text-4xl relative overflow-hidden">
+                    <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+                    <span className="relative z-10">🎨</span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-medium text-white truncate flex-1 mr-2">
+                        {template.name || 'Untitled Template'}
+                      </h3>
+                      <button 
+                        onClick={(e) => handleLike(e, template.canvaId)}
+                        className="p-1 hover:bg-gray-600 rounded transition-colors"
+                      >
+                        <HeartIcon className="h-4 w-4 text-gray-400 hover:text-red-500" />
+                      </button>
+                    </div>
+                    
+                    <p className="text-xs text-gray-400">
+                      {template.category || 'General'}
+                    </p>
+                    
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <HeartIcon className="h-3 w-3 text-red-500" />
+                          <span>{template.likes || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          <span>{template.views || 0}</span>
+                        </div>
+                      </div>
+                      <span className="text-green-400 font-medium">Free</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
