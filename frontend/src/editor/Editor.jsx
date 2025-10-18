@@ -1,30 +1,23 @@
-import React from 'react'
-import {NewEditableText} from "./test"
-import {Draggable} from "./Draggable"
-import DragResize from "./DragResize"
-
-function DraggableStatic({children,style,className}) {
-        const content =
-        typeof children === "function"
-        ? children({dragging:false, position: {x:565,y:101} })
-        : children;
-        const wrapperStyle = {
-        transform: "translate(565px, 101px)",
-        touchAction: "none",
-        ...style,
-    };
-
-        return (
-        <div
-        className={["inline-block select-none", className].filter(Boolean).join(" ")}
-        style={wrapperStyle}
-        tabIndex={0}
-        >
-        {content}
-        </div>)
-    }
+// src/components/ui/Editor.jsx
+import React from "react";
+import DragResize, {IRRect} from "./DragResize";
+import { NewEditableText, IRText } from "./IR";
+import CanvasContainer, {IRCanvasContainer} from "./Canvas";
+import NewComponent from "./testcanvas"
 
 export default function EditorPage() {
+  // selection state (ID of the active node, or null)
+  const [selectedId, setSelectedId] = React.useState(null);
+
+  const [bounds, setBounds] = React.useState({ w: 1000, h: 600 });
+
+
+  let ir = new IRCanvasContainer()
+  for(let i=0;i<5;i++) {
+    let dragresize = new IRRect(ir)
+    let text = new IRText(dragresize)
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm border-b">
@@ -36,23 +29,15 @@ export default function EditorPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div
+        <CanvasContainer
           id="future-canvas"
-          className="w-full h-[70vh] bg-white rounded-lg shadow border border-gray-200 relative overflow-hidden"
-        >
-          <DragResize initialPos={{ x: 40, y: 40 }} initialSize={{ w: 260, h: 120 }}>
-            <NewEditableText initialText="Drag me and resize me" />
-          </DragResize>
+          size={bounds}
+          ir = {ir}
 
-          {/*<DragResize initialPos={{ x: 360, y: 160 }} initialSize={{ w: 220, h: 140 }}>
-            {({ pos, size }) => (
-              <div className="p-3">
-                <div className="text-sm text-gray-500 mb-2">x:{pos.x} y:{pos.y} w:{size.w} h:{size.h}</div>
-                <NewEditableText initialText="Second node" />
-              </div>
-            )}
-          </DragResize> */}
-        </div>
+        >
+          
+        </CanvasContainer>
+        <NewComponent></NewComponent>
       </main>
     </div>
   );

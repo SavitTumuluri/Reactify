@@ -1,6 +1,6 @@
 // src/components/ui/draggable.jsx
 import React, { useEffect, useRef, useState } from "react";
-import {IR} from "./test"
+import {IR} from "./IR"
 
 class DraggableIR extends IR {
     

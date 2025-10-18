@@ -1,164 +1,210 @@
 // src/components/ui/DragResize.jsx
-import React, { useEffect, useRef, useState } from "react";
-import { IR } from "./test"; // <-- adjust if your path differs
+import React, { useEffect, useRef } from "react";
+import { IR, IRView } from "./IR";
 
-/** IR record for a rectangle: position + size + angle */
-class IRRect extends IR {
-  constructor(init = {}) {
-    super({
-      pos: { x: 24, y: 24 },
-      size: { w: 220, h: 120 },
-      angle: 0, // degrees
+/** IR record (relative pos/size + rotation) */
+export class IRRect extends IRView {
+  constructor(parent, init = {}) {
+    super(parent, {
+      // Optional config that used to be props:
+      config: {
+        minSize: { w: 60, h: 40 },
+        grid: null, // e.g. { x: 10, y: 10 } in px
+        rotationSnap: 15,
+        className: "",
+        style: {},
+        selected: false,
+      },
       ...init,
     });
+  }
+  toComponent() {
+    return DragResize;
+  }
+  toReact() {
+    const posRel = this.get("posRel");
+    const sizeRel = this.get("sizeRel");
+    const angle = this.get("angle");
+    const body = this.children.map((c) => c.toReact()).join("\n");
+    return `<DragResizeStatic posRel={{x:${posRel.x}, y:${posRel.y}}} sizeRel={{w:${sizeRel.w}, h:${sizeRel.h}}} angle={${angle}}>${body}\n</DragResizeStatic>`;
+  }
+  toImports() {
+    return ['import DragResizeStatic from "./DragResizeStatic"'];
   }
 }
 
 /**
- * Drag + Resize + Rotate wrapper (IR-backed).
- * Children: node | ({ dragging, resizing, rotating, pos, size, angle }) => node
+ * DragResize — API: { ir, bounds }
+ * - robust transform strings
+ * - global listeners on window (not a pointer-events:none wrapper)
+ * - safe init when bounds are known; prefer IR state
+ * - no behavior change to resize/rotate/snap/clamp
  */
-export default function DragResize({
-  initialPos = { x: 24, y: 24 },
-  initialSize = { w: 220, h: 120 },
-  minSize = { w: 60, h: 40 },
-  constrainToParent = true,
-  grid = null,                 // {x,y} to snap pos/size
-  rotationSnap = 15,           // degrees when Shift is held
-  className,
-  style,
-  children,
-}) {
-  const [ir] = useState(() => new IRRect({ pos: initialPos, size: initialSize }));
-  const [pos, setPos] = ir.useState("pos", initialPos);
-  const [size, setSize] = ir.useState("size", initialSize);
+export default function DragResize({ ir, bounds }) {
+
+  // --- Config (optional) stored in IR; safe fallbacks ---
+  const cfg = ir?.get?.("config") ?? {};
+  const minSize = cfg.minSize ?? { w: 60, h: 40 };
+  const grid = cfg.grid ?? null;
+  const rotationSnap = Number.isFinite(cfg.rotationSnap) ? cfg.rotationSnap : 15;
+  const className = typeof cfg.className === "string" ? cfg.className : "";
+  const style = typeof cfg.style === "object" && cfg.style ? cfg.style : {};
+  const selected = !!cfg.selected;
+  const onSelect = typeof cfg.onSelect === "function" ? cfg.onSelect : () => {};
+
+  // --- Bounds ---
+  const bwRaw = bounds?.w ?? bounds?.width ?? 0;
+  const bhRaw = bounds?.h ?? bounds?.height ?? 0;
+  const hasBounds = bwRaw > 0 && bhRaw > 0;
+  // When unknown, keep 1 to avoid NaN/Infinity, but also avoid re-deriving initial rel state
+  const bw = hasBounds ? bwRaw : 1;
+  const bh = hasBounds ? bhRaw : 1;
+
+  const toRel = (v, total) => (total > 0 ? v / total : 0);
+  const toPx = (v, total) => Math.round(v * total);
+
+  // --- Initial px defaults (only used if IR has no value AND bounds are known) ---
+  const _initialPosPx = { x: 24, y: 24 };
+  const _initialSizePx = { w: 220, h: 120 };
+
+  // Prefer IR existing state; otherwise derive sensible defaults when bounds are known
+  const initialPosRelFallback = hasBounds
+    ? { x: toRel(_initialPosPx.x, bw), y: toRel(_initialPosPx.y, bh) }
+    : { x: 0, y: 0 };
+
+  const initialSizeRelFallback = hasBounds
+    ? { w: toRel(_initialSizePx.w, bw), h: toRel(_initialSizePx.h, bh) }
+    : { w: 0.1, h: 0.1 }; // minimal safe default until bounds arrive
+
+  // --- IR-backed state (do not fight existing IR values) ---
+  const [posRel, setPosRel] = ir.useState("posRel", initialPosRelFallback);
+  const [sizeRel, setSizeRel] = ir.useState("sizeRel", initialSizeRelFallback);
   const [angle, setAngle] = ir.useState("angle", 0);
 
   const wrapRef = useRef(null);
-  const boxRef  = useRef(null);
+  const rotatedRef = useRef(null);
 
-  // drag state
+  // drag
   const draggingRef = useRef(false);
   const dragOrigin = useRef({ x: 0, y: 0 });
-  const dragStart  = useRef({ x: pos.x, y: pos.y });
+  const dragStartRel = useRef({ x: posRel.x, y: posRel.y });
 
-  // resize state
-  const resizingRef = useRef(null); // "n","ne","e","se","s","sw","w","nw" | null
-  const resizeStartPos  = useRef({ x: pos.x, y: pos.y });
-  const resizeStartSize = useRef({ w: size.w, h: size.h });
+  // resize
+  const resizingRef = useRef(null);
+  const resizeStartPosRel = useRef({ x: posRel.x, y: posRel.y });
+  const resizeStartSizeRel = useRef({ w: sizeRel.w, h: sizeRel.h });
 
-  // rotate state
+  // rotate
   const rotatingRef = useRef(false);
   const rotateCenter = useRef({ x: 0, y: 0 });
   const rotateStartAngleDeg = useRef(0);
   const rotateStartPointerRad = useRef(0);
 
-  // ---------- helpers ----------
-  const rad = (deg) => (deg * Math.PI) / 180;
+  const rad = (d) => (d * Math.PI) / 180;
   const deg = (r) => (r * 180) / Math.PI;
 
-  const snapAll = (x, y, w, h) => {
-    if (!grid) return { x, y, w, h };
-    const sx = grid.x || 1, sy = grid.y || 1;
-    return {
-      x: Math.round(x / sx) * sx,
-      y: Math.round(y / sy) * sy,
-      w: Math.max(minSize.w, Math.round(w / sx) * sx),
-      h: Math.max(minSize.h, Math.round(h / sy) * sy),
-    };
-  };
-
-  const clampToParent = (x, y, w, h) => {
-    if (!constrainToParent || !wrapRef.current?.parentElement) return { x, y, w, h };
-    const parent = wrapRef.current.parentElement.getBoundingClientRect();
-    const maxX = Math.max(parent.width - w, 0);
-    const maxY = Math.max(parent.height - h, 0);
-    return {
-      x: Math.min(Math.max(x, 0), maxX),
-      y: Math.min(Math.max(y, 0), maxY),
-      w, h,
-    };
-  };
-
-  // convert global delta to the box's local (unrotated) coords
   const globalToLocalDelta = (gdx, gdy) => {
     const th = rad(angle);
     const c = Math.cos(th), s = Math.sin(th);
-    // R(-θ) * [gdx,gdy]
-    return { dx:  c * gdx + s * gdy, dy: -s * gdx + c * gdy };
-    // (x points east, y points south)
+    return { dx: c * gdx + s * gdy, dy: -s * gdx + c * gdy };
   };
 
-  // ---------- drag ----------
+  const snapRel = (x, y, w, h) => {
+    if (!grid) return { x, y, w, h };
+    const sx = grid.x ? grid.x / bw : null;
+    const sy = grid.y ? grid.y / bh : null;
+    return {
+      x: sx ? Math.round(x / sx) * sx : x,
+      y: sy ? Math.round(y / sy) * sy : y,
+      w: sx ? Math.round(w / sx) * sx : w,
+      h: sy ? Math.round(h / sy) * sy : h,
+    };
+  };
+
+  const minRel = { w: Math.min(minSize.w / bw, 1), h: Math.min(minSize.h / bh, 1) };
+  const clampRel = (x, y, w, h) => {
+    w = Math.max(w, minRel.w);
+    h = Math.max(h, minRel.h);
+    const maxX = Math.max(1 - w, 0);
+    const maxY = Math.max(1 - h, 0);
+    x = Math.min(Math.max(x, 0), maxX);
+    y = Math.min(Math.max(y, 0), maxY);
+    return { x, y, w, h };
+  };
+
+  // --- drag ---
   const onDragDown = (e) => {
-    if (e.target.dataset.handle || e.target.dataset.rotate) return; // ignore when starting from a handle
+    if (e.target.dataset.handle || e.target.dataset.rotate) return;
+    onSelect();
+    e.stopPropagation();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     draggingRef.current = true;
     dragOrigin.current = { x: e.clientX, y: e.clientY };
-    dragStart.current = { ...pos };
+    // capture current rel at the moment of pointer down
+    dragStartRel.current = { x: posRel.x, y: posRel.y };
   };
-
   const onDragMove = (e) => {
     if (!draggingRef.current || resizingRef.current || rotatingRef.current) return;
-    const dx = e.clientX - dragOrigin.current.x;
-    const dy = e.clientY - dragOrigin.current.y;
-    let nx = dragStart.current.x + dx;
-    let ny = dragStart.current.y + dy;
-    const snapped = grid ? snapAll(nx, ny, size.w, size.h) : { x: nx, y: ny, w: size.w, h: size.h };
-    const clamped = clampToParent(snapped.x, snapped.y, size.w, size.h);
-    setPos({ x: clamped.x, y: clamped.y });
+    const dxRel = (e.clientX - dragOrigin.current.x) / bw;
+    const dyRel = (e.clientY - dragOrigin.current.y) / bh;
+    const snapped = snapRel(
+      dragStartRel.current.x + dxRel,
+      dragStartRel.current.y + dyRel,
+      sizeRel.w,
+      sizeRel.h
+    );
+    const c = clampRel(snapped.x, snapped.y, sizeRel.w, sizeRel.h);
+    setPosRel({ x: c.x, y: c.y });
   };
+  const onDragUp = () => (draggingRef.current = false);
 
-  const onDragUp = () => { draggingRef.current = false; };
-
-  // ---------- resize ----------
+  // --- resize ---
   const startResize = (handle) => (e) => {
+    onSelect();
     e.stopPropagation();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     resizingRef.current = handle;
     dragOrigin.current = { x: e.clientX, y: e.clientY };
-    resizeStartPos.current  = { ...pos };
-    resizeStartSize.current = { ...size };
+    resizeStartPosRel.current = { x: posRel.x, y: posRel.y };
+    resizeStartSizeRel.current = { w: sizeRel.w, h: sizeRel.h };
   };
-
   const doResize = (e) => {
     const h = resizingRef.current;
     if (!h) return;
-
     const gdx = e.clientX - dragOrigin.current.x;
     const gdy = e.clientY - dragOrigin.current.y;
-    const { dx, dy } = globalToLocalDelta(gdx, gdy); // local deltas aligned to box axes
+    const { dx, dy } = globalToLocalDelta(gdx, gdy);
+    const dxRel = dx / bw;
+    const dyRel = dy / bh;
 
-    let x = resizeStartPos.current.x;
-    let y = resizeStartPos.current.y;
-    let w = resizeStartSize.current.w;
-    let ht = resizeStartSize.current.h;
+    let x = resizeStartPosRel.current.x;
+    let y = resizeStartPosRel.current.y;
+    let w = resizeStartSizeRel.current.w;
+    let ht = resizeStartSizeRel.current.h;
 
-    // local-axis adjustments
-    if (h.includes("e")) w = resizeStartSize.current.w + dx;
-    if (h.includes("s")) ht = resizeStartSize.current.h + dy;
-    if (h.includes("w")) { w = resizeStartSize.current.w - dx; x = resizeStartPos.current.x + dx; }
-    if (h.includes("n")) { ht = resizeStartSize.current.h - dy; y = resizeStartPos.current.y + dy; }
+    if (h.includes("e")) w = resizeStartSizeRel.current.w + dxRel;
+    if (h.includes("s")) ht = resizeStartSizeRel.current.h + dyRel;
+    if (h.includes("w")) { w = resizeStartSizeRel.current.w - dxRel; x = resizeStartPosRel.current.x + dxRel; }
+    if (h.includes("n")) { ht = resizeStartSizeRel.current.h - dyRel; y = resizeStartPosRel.current.y + dyRel; }
 
-    // min size (if we clamp on W/N, move origin back so the opposite edge stays fixed)
-    if (w < minSize.w) { if (h.includes("w")) x -= (minSize.w - w); w = minSize.w; }
-    if (ht < minSize.h) { if (h.includes("n")) y -= (minSize.h - ht); ht = minSize.h; }
+    if (w < minRel.w) { if (h.includes("w")) x -= minRel.w - w; w = minRel.w; }
+    if (ht < minRel.h) { if (h.includes("n")) y -= minRel.h - ht; ht = minRel.h; }
 
-    const snapped = snapAll(x, y, w, ht);
-    const clamped = clampToParent(snapped.x, snapped.y, snapped.w, snapped.h);
-    setPos({ x: clamped.x, y: clamped.y });
-    setSize({ w: clamped.w, h: clamped.h });
+    const snapped = snapRel(x, y, w, ht);
+    const c = clampRel(snapped.x, snapped.y, snapped.w, snapped.h);
+    setPosRel({ x: c.x, y: c.y });
+    setSizeRel({ w: c.w, h: c.h });
   };
+  const endResize = () => (resizingRef.current = null);
 
-  const endResize = () => { resizingRef.current = null; };
-
-  // ---------- rotate ----------
+  // --- rotate ---
   const onRotateDown = (e) => {
+    onSelect();
     e.stopPropagation();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     rotatingRef.current = true;
 
-    const rect = boxRef.current.getBoundingClientRect();
+    const rect = rotatedRef.current.getBoundingClientRect();
     rotateCenter.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     rotateStartAngleDeg.current = angle;
     rotateStartPointerRad.current = Math.atan2(
@@ -166,40 +212,90 @@ export default function DragResize({
       e.clientX - rotateCenter.current.x
     );
   };
-
   const doRotate = (e) => {
     if (!rotatingRef.current) return;
     const now = Math.atan2(
       e.clientY - rotateCenter.current.y,
       e.clientX - rotateCenter.current.x
     );
-    let nextDeg = rotateStartAngleDeg.current + deg(now - rotateStartPointerRad.current);
-    // snap with Shift
-    if (e.shiftKey && rotationSnap > 0) {
-      nextDeg = Math.round(nextDeg / rotationSnap) * rotationSnap;
-    }
-    setAngle(((nextDeg % 360) + 360) % 360); // keep in [0,360)
+    let next = rotateStartAngleDeg.current + deg(now - rotateStartPointerRad.current);
+    if (e.shiftKey && rotationSnap > 0) next = Math.round(next / rotationSnap) * rotationSnap;
+    setAngle(((next % 360) + 360) % 360);
+  };
+  const endRotate = () => (rotatingRef.current = false);
+
+  // --- global listeners on window (robust) ---
+  useEffect(() => {
+    const move = (e) => {
+      doResize(e);
+      onDragMove(e);
+      doRotate(e);
+    };
+    const up = () => {
+      endResize();
+      onDragUp();
+      endRotate();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posRel, sizeRel, angle, bw, bh]);
+
+  // --- render in px (state is relative) ---
+  const px = {
+    x: toPx(posRel.x, bw),
+    y: toPx(posRel.y, bh),
+    w: toPx(sizeRel.w, bw),
+    h: toPx(sizeRel.h, bh),
   };
 
-  const endRotate = () => { rotatingRef.current = false; };
+  // active when selected or interacting
+  const isActive = selected || draggingRef.current || !!resizingRef.current || rotatingRef.current;
 
-  // ---------- global-ish listeners on wrapper ----------
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const move = (e) => { doResize(e); onDragMove(e); doRotate(e); };
-    const up = () => { endResize(); onDragUp(); endRotate(); };
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerup", up);
-    el.addEventListener("pointercancel", up);
-    return () => {
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerup", up);
-      el.removeEventListener("pointercancel", up);
-    };
-  }, [pos, size, angle]);
+  // --- styles (valid transform strings!) ---
+  const outerStyle = {
+    position: "absolute",
+    transform: `translate(${px.x}px, ${px.y}px)`,
+    width: px.w,
+    height: px.h,
+    boxSizing: "border-box",
+    touchAction: "none",
+    overflow: "visible",
+    outline: "none",
+    ...style,
+  };
 
-  // ---------- styles ----------
+  const rotatedStyle = {
+    position: "absolute",
+    inset: 0,
+    transform: `rotate(${angle}deg)`,
+    transformOrigin: "50% 50%",
+  };
+
+  const contentBoxStyle = {
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
+    background: "#fff",
+    border: "1px solid #e5e7eb",
+    boxShadow: "0 6px 16px rgba(0,0,0,.06)",
+    overflow: "hidden",
+  };
+
+  const selectionFrameStyle = {
+    position: "absolute",
+    inset: 0,
+    borderRadius: 12,
+    border: "2px solid rgba(59,130,246,.45)",
+    pointerEvents: "none",
+  };
+
   const handleStyle = (name) => {
     const base = {
       position: "absolute",
@@ -210,17 +306,25 @@ export default function DragResize({
       borderRadius: 2,
       boxShadow: "0 0 0 1px rgba(0,0,0,.15)",
       touchAction: "none",
-      cursor: ({
-        n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize",
-        ne: "nesw-resize", sw: "nesw-resize", nw: "nwse-resize", se: "nwse-resize",
-      })[name],
+      cursor: (
+        {
+          n: "ns-resize",
+          s: "ns-resize",
+          e: "ew-resize",
+          w: "ew-resize",
+          ne: "nesw-resize",
+          sw: "nesw-resize",
+          nw: "nwse-resize",
+          se: "nwse-resize",
+        }
+      )[name],
     };
     const pad = -5;
     const posMap = {
-      n:  { left: "50%", top: pad, transform: "translate(-50%, 0)" },
-      s:  { left: "50%", bottom: pad, transform: "translate(-50%, 0)" },
-      e:  { right: pad, top: "50%", transform: "translate(0, -50%)" },
-      w:  { left: pad, top: "50%", transform: "translate(0, -50%)" },
+      n: { left: "50%", top: pad, transform: "translate(-50%, 0)" },
+      s: { left: "50%", bottom: pad, transform: "translate(-50%, 0)" },
+      e: { right: pad, top: "50%", transform: "translate(0, -50%)" },
+      w: { left: pad, top: "50%", transform: "translate(0, -50%)" },
       ne: { right: pad, top: pad },
       se: { right: pad, bottom: pad },
       nw: { left: pad, top: pad },
@@ -244,55 +348,38 @@ export default function DragResize({
     cursor: "grab",
   };
 
-  const outerStyle = {
-    position: "absolute",
-    transform: `translate(${pos.x}px, ${pos.y}px)`,
-    width: size.w,
-    height: size.h,
-    boxSizing: "border-box",
-    touchAction: "none",
-    ...style,
-  };
-
-  const boxInnerStyle = {
-    width: "100%",
-    height: "100%",
-    borderRadius: 12,
-    background: "#fff",
-    border: "1px solid #e5e7eb",
-    boxShadow: "0 6px 16px rgba(0,0,0,.06)",
-    overflow: "hidden",
-    transform: `rotate(${angle}deg)`,
-    transformOrigin: "50% 50%",
-  };
-
-  const content =
-    typeof children === "function"
-      ? children({
-          dragging: draggingRef.current,
-          resizing: !!resizingRef.current,
-          rotating: rotatingRef.current,
-          pos,
-          size,
-          angle,
-        })
-      : children;
+  // render children from IR (if any)
+  const renderedChildren = (ir.children ?? []).map((child, i) => {
+    const Comp = child.toComponent();
+    return <Comp key={child.key ?? i} ir={child} bounds={{ w: px.w, h: px.h }} />;
+  });
 
   return (
-    <div ref={wrapRef} className={className} style={{ position: "relative", width: "100%", height: "100%" }}>
-      <div data-draggable onPointerDown={onDragDown} style={outerStyle}>
-        {/* rotated content box */}
-        <div ref={boxRef} style={boxInnerStyle}>
-          {content}
+    <div
+      ref={wrapRef}
+      className={className}
+      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+      aria-selected={selected}
+    >
+      <div
+        data-draggable
+        onPointerDown={onDragDown}
+        style={{ ...outerStyle, pointerEvents: "auto" }}
+        tabIndex={0}
+      >
+        <div ref={rotatedRef} style={rotatedStyle}>
+          {isActive && <div aria-hidden style={selectionFrameStyle} />}
+          <div style={contentBoxStyle}>{renderedChildren}</div>
+
+          {isActive && (
+            <>
+              <div data-rotate style={rotateHandleStyle} onPointerDown={onRotateDown} />
+              {["n", "ne", "e", "se", "s", "sw", "w", "nw"].map((h) => (
+                <div key={h} data-handle={h} style={handleStyle(h)} onPointerDown={startResize(h)} />
+              ))}
+            </>
+          )}
         </div>
-
-        {/* rotate handle (top-center, follows rotation visually because it’s inside the rotated box’s stacking context) */}
-        <div data-rotate style={rotateHandleStyle} onPointerDown={onRotateDown} />
-
-        {/* 8 resize handles */}
-        {["n","ne","e","se","s","sw","w","nw"].map((h) => (
-          <div key={h} data-handle={h} style={handleStyle(h)} onPointerDown={startResize(h)} />
-        ))}
       </div>
     </div>
   );

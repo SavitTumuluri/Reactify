@@ -1,6 +1,6 @@
 // src/components/ui/draggable.jsx
 import React, { useEffect, useRef, useState } from "react";
-import {IR} from "./test"
+import {IR} from "./IR"
 
 class DraggableIR extends IR {
     
@@ -26,9 +26,13 @@ function useRafState(initial,ir) {
   }, []);
   return [state, set];
 }
-
+/**
+ * 
+ * @param {ir} param0 
+ * @returns 
+ */
 export function Draggable({
-  children,
+  ir,
   initial = { x: 0, y: 0 },
   constrainToParent = false,
   handleSelector,
@@ -176,3 +180,4 @@ export function DraggableCreator(data) {
 DraggableIR.prototype.createReactString = function() {
     return DraggableCreator(this._data)
 }
+DraggableIR.createEditable = Draggable
