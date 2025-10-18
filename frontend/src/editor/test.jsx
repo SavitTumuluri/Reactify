@@ -1,8 +1,13 @@
 import { useState } from "react"
 
+
 // ---------- IR Core ----------
 
-class IR {
+export class IR {
+  /**
+   * @type {IRView[]}
+   */
+  children
   /** @private */
   _data = {}
   /** @private */
@@ -68,12 +73,106 @@ class IR {
   toJSON() {
     return { ...this._data }
   }
-
-  /** Restore an IR from `solidify()` output. */
-  static fromString(serialized) {
-    const obj = JSON.parse(serialized)
-    return new IR(obj)
+  /**
+   * 
+   * @returns {String[]}
+   */
+  toEffects() {
+    return []
   }
+  /**
+   * 
+   * @returns {String[]}
+   */
+  toImports() {
+    return []
+  }
+  
+}
+
+class IRRoot extends IR {
+  componentName = "UnnamedComponent"
+  //This is a IR that will compile to a react template
+  /**${import1}
+   * ${import2}
+   * export function GeneralComponent(props) {
+   *    ${Effect1}
+   *    ${Effect2}
+   *    return <div>${child1.getReact()}${child2.getReact()}</div>
+   * }
+   */
+  
+  toReact() {
+    
+    /**
+     * @type {Set<String>}
+     */
+    let effects = new Set()
+    /**
+     * @type {Set<String>}
+     */
+    let imports = new Set()
+
+
+    /**
+     * 
+     * @param {IR} ir 
+     */
+    let Explorer = (ir) => {
+      let effectList = ir.toEffects()
+      let importList = ir.toImports()
+      for(let effect of effectList) {
+        effects.add(effect)
+      }
+      for(let imp of importList) {
+        imports.add(imp)
+      }
+
+      for(let child of ir.children) {
+        Explorer(child)
+      }
+    }
+
+    Explorer(this)
+
+    let importString = ""
+    for(let imp of imports) {
+      importString += imp + "\n"
+    }
+
+    let effectString = ""
+    for(let effect of effectString) {
+      effectString += effect + "\n"
+    }
+
+    let divString = ""
+    for(let child of this.children) {
+      divString += child.toReact() + "\n"
+    }
+    return `
+${importString}
+export default function ${UnnamedComponent}(props) {
+  ${effectString}
+  return <div>${divString}</div>
+}
+    `
+  }
+
+  toImports() {
+    return [`import {useState,useRef,useEffect} from "react"`]
+  }
+  
+}
+class IRView extends IR {
+  
+  toReact() {
+    let code = ""
+    for(let child of this.children) {
+      code.push(child.toReact())
+    }
+    return `<div>${code}</div>\n`
+  }
+
 }
 
 // ---------- Example IR node types ----------
