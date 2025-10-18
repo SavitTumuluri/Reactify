@@ -44,16 +44,14 @@ export default function DragResize({ ir, bounds, onElementSelect, isSelected, el
       borderWidth: "1px",
       borderStyle: "solid",
       borderColor: "#e5e7eb",
-      borderRadius: isCircle ? "50%" : isTriangle || isStar ? "0px" : "12px",
+      borderRadius: "12px",
       boxShadow: "0 6px 16px rgba(0,0,0,.06)",
       overflow: "hidden",
-      ...(isTriangle && { clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }),
-      ...(isStar && { clipPath: "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)" }),
     };
     const needsMerge = Object.keys(defaults).some((k) => existing[k] === undefined);
     if (needsMerge) ir.set("styles", { ...defaults, ...existing });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ir, isCircle, isTriangle, isStar]);
+  }, [ir]);
 
   // helper to read from styles with fallback
   const readStyle = (key, fallback) => {
@@ -218,13 +216,6 @@ export default function DragResize({ ir, bounds, onElementSelect, isSelected, el
     if (w < minRel.w) { if (h.includes("w")) x -= minRel.w - w; w = minRel.w; }
     if (ht < minRel.h) { if (h.includes("n")) y -= minRel.h - ht; ht = minRel.h; }
 
-    // For circles, maintain square aspect ratio only if Shift key is held
-    if (isCircle && e.shiftKey) {
-      const maxSize = Math.max(w, ht);
-      w = maxSize;
-      ht = maxSize;
-    }
-
     const snapped = snapRel(x, y, w, ht);
     const c = clampRel(snapped.x, snapped.y, snapped.w, snapped.h);
     setPosRel({ x: c.x, y: c.y });
@@ -340,7 +331,7 @@ export default function DragResize({ ir, bounds, onElementSelect, isSelected, el
   const contentBoxStyle = {
     width: "100%",
     height: "100%",
-    borderRadius: readStyle("borderRadius", isCircle ? "50%" : isTriangle || isStar ? "0px" : "12px"),
+    borderRadius: readStyle("borderRadius", "12px"),
     background: readStyle("backgroundColor", "#fff"),
     border: `${readStyle("borderWidth", "1px")} ${readStyle("borderStyle", "solid")} ${readStyle(
       "borderColor",
@@ -348,18 +339,14 @@ export default function DragResize({ ir, bounds, onElementSelect, isSelected, el
     )}`,
     boxShadow: readStyle("boxShadow", "0 6px 16px rgba(0,0,0,.06)"),
     overflow: readStyle("overflow", "hidden"),
-    ...(isTriangle && { clipPath: readStyle("clipPath", "polygon(50% 0%, 0% 100%, 100% 100%)") }),
-    ...(isStar && { clipPath: readStyle("clipPath", "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)") }),
   };
 
   const selectionFrameStyle = {
     position: "absolute",
     inset: 0,
-    borderRadius: readStyle("borderRadius", isCircle ? "50%" : isTriangle || isStar ? "0px" : "12px"),
+    borderRadius: readStyle("borderRadius", "12px"),
     border: "2px solid rgba(59,130,246,.45)",
     pointerEvents: "none",
-    ...(isTriangle && { clipPath: readStyle("clipPath", "polygon(50% 0%, 0% 100%, 100% 100%)") }),
-    ...(isStar && { clipPath: readStyle("clipPath", "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)") }),
   };
 
   const handleStyle = (name) => {

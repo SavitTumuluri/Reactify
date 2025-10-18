@@ -1,7 +1,0 @@
-Do a full refactor of this code base. Follow good principles for refactoring a codebase you may be unfamilar with:
-1) Analyze the codebase, frontend, and backend, determine the API to conform to. Identify areas of bloat, or error-prone libraries
-2) Plan out a full refactor, including architecture designs to keep/change, and features to maintain. 
-3) Keep full functionality. 
-4) Maintain and enhance readability. Adopt clean architecture designs, take advantage
-of helpful libraries, and software design principles/patterns. 
-5) Minimize complexity, and maximize future maintainability/versatility. 
