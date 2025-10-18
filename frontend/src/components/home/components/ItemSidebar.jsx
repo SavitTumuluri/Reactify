@@ -106,7 +106,49 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
                 </>
               )}
             </div>
+          {/* Tags */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <TagIcon className="h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-400">Tags</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {item.tags?.map((tag, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-purple-600 text-white text-xs rounded-full"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
 
+          {/* Additional Info */}
+          {isTemplate && (
+            <div className="bg-gray-700 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarIcon className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-400">Last Updated</span>
+              </div>
+              <p className="text-white">{item.lastUpdated}</p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="space-y-3">
+            <button 
+              onClick={isTemplate ? undefined : onOpenDesign}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+            >
+              {isTemplate ? 'Use Template' : 'Open Design'}
+            </button>
+            
+            <button className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+              <HeartIcon className="h-4 w-4" />
+              {isTemplate ? 'Add to Favorites' : 'Add to Favorites'}
+            </button>
+          </div>
           </div>
         </div>
       </div>
