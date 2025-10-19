@@ -121,6 +121,7 @@ class CanvasPreviewService {
    * @param {string} previewUrl - The S3 preview URL
    */
   async updateCanvasPreviewUrl(canvasId, previewUrl) {
+    console.log({canvasId}, "preview")
     try {
       const headers = await this.getAuthHeaders();
       const response = await fetch(`${BACKEND_URL}/api/canvas/${canvasId}/preview`, {
