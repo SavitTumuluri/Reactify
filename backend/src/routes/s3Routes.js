@@ -19,7 +19,15 @@ const router = express.Router();
 
 // CORS for frontend origin if provided
 const FRONTEND_URL = process.env.FRONTEND_URL;
-router.use(cors({ origin: FRONTEND_URL, credentials: false, methods: ["GET","POST","DELETE","OPTIONS"] }));
+const PRODUCTION_URL = "http://3.139.56.157";
+const allowedOrigins = [FRONTEND_URL, PRODUCTION_URL].filter(Boolean);
+
+router.use(cors({ 
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true, 
+  credentials: false, 
+  methods: ["GET","POST","DELETE","OPTIONS","PUT"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 router.use(express.json());
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });

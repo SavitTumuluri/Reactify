@@ -3,10 +3,14 @@ import { CanvasDataService, UserService } from '../config/dynamodb.js';
 
 export class SocketHandler {
   constructor(server) {
+    const FRONTEND_URL = process.env.FRONTEND_URL;
+    const PRODUCTION_URL = "http://3.139.56.157";
+    const allowedOrigins = [FRONTEND_URL, PRODUCTION_URL].filter(Boolean);
+    
     this.io = new Server(server, {
       cors: {
-        origin: process.env.FRONTEND_URL,
-        methods: ['GET', 'POST'],
+        origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         credentials: true,
       },
     });

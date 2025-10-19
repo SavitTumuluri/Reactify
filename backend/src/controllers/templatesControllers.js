@@ -98,12 +98,30 @@ export class templateController{
                     parsedTemplateData = template.canvaData;
                 }
                 
-
+                console.log('Template canvaData type:', typeof template.canvaData);
+                console.log('Parsed template data keys:', Object.keys(parsedTemplateData));
                 
-                // Direct copy - just use the parsed data as-is
+                // Ensure we have the IR structure properly formatted
                 if (parsedTemplateData && Object.keys(parsedTemplateData).length > 0) {
-                    canvasData = JSON.parse(JSON.stringify(parsedTemplateData)); // Deep clone everything
-                    console.log('Using parsed template data directly');
+                    // If the data has an 'ir' property, use it directly
+                    if (parsedTemplateData.ir) {
+                        canvasData = {
+                            ir: parsedTemplateData.ir
+                        };
+                        console.log('Using template IR data directly');
+                    } 
+                    // If the data IS the IR structure itself, wrap it
+                    else if (parsedTemplateData.name === 'IRCanvasContainer') {
+                        canvasData = {
+                            ir: parsedTemplateData
+                        };
+                        console.log('Wrapping template data as IR');
+                    }
+                    // Otherwise, use the data as-is (it might be the full canvas data)
+                    else {
+                        canvasData = JSON.parse(JSON.stringify(parsedTemplateData)); // Deep clone everything
+                        console.log('Using parsed template data as-is');
+                    }
                 } else {
                     console.log('No valid template data found, using fallback');
                     canvasData = {
@@ -118,6 +136,7 @@ export class templateController{
                     };
                 }
                 
+                console.log('Final canvasData structure:', JSON.stringify(canvasData, null, 2));
                 
             } catch (error) {
                 console.error('Error parsing template canvaData:', error);
@@ -138,6 +157,7 @@ export class templateController{
                 userId: auth0Id,
                 name: template.name,
                 canvasData: serializeCanvasDataForStorage(canvasData), // Use proper serialization
+                previewUrl: template.previewUrl || templateController.generatePreviewUrl(template.canvaId), // Copy previewUrl from template
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 timestamp: new Date().toISOString()

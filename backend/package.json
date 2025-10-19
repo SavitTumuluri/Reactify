@@ -9,6 +9,7 @@
     "dev": "nodemon server.js",
     "view-db": "node view-db.js",
     "update-template-s3": "node update-template-s3.js",
+    "setup-s3-cors": "node setup-s3-cors.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

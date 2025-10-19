@@ -56,16 +56,24 @@ export default function EditorPage() {
   const { manualSave } = useCanvasAutoSave(userId, canvasId, canvasDataPayload, null, {
     debounceDelay: 800,
     onSaveSuccess: async (data) => {
-      try {
-        await handleCapturePreview();
-      } catch (error) {
-      }
+      // Only capture preview on manual saves, not on every autosave
+      // This prevents the expensive html-to-image operation from running constantly
     }
   });
 
-  const handleCapturePreview = useCallback(async () => {
-    try {
+  // Throttled preview capture - only runs every 10 seconds max
+  const lastPreviewCaptureRef = useRef(0);
+  const PREVIEW_THROTTLE_MS = 10000; // 10 seconds
 
+  const handleCapturePreview = useCallback(async (force = false) => {
+    const now = Date.now();
+    
+    // Throttle preview captures to prevent performance issues
+    if (!force && (now - lastPreviewCaptureRef.current) < PREVIEW_THROTTLE_MS) {
+      return;
+    }
+
+    try {
       // Find canvas element
       const canvasElement = document.getElementById('canvas') || 
                            document.querySelector('[data-canvas]') || 
@@ -74,6 +82,7 @@ export default function EditorPage() {
       
       if (canvasElement && canvasId) {
         await canvaService.captureCanvasPreview(canvasElement, canvasId);
+        lastPreviewCaptureRef.current = now;
       } else {
         console.warn('Canvas element or canvasId not found:', { canvasElement, canvasId });
       }
@@ -82,13 +91,32 @@ export default function EditorPage() {
     }
   }, [canvasId, userId]);
 
+  // Delayed preview capture - only after user stops editing for 5 seconds
+  const previewTimeoutRef = useRef(null);
+  const PREVIEW_DELAY_MS = 5000; // 5 seconds after last change
+
   useEffect(() => {
     // Whenever history records a new change, bump version to notify autosave hook
     stateman.history.onChange = () => {
       setIrVersion(v => v + 1);
+      
+      // Clear existing timeout and set new one for delayed preview capture
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+      
+      previewTimeoutRef.current = setTimeout(() => {
+        handleCapturePreview();
+      }, PREVIEW_DELAY_MS);
     };
-    return () => { stateman.history.onChange = null; };
-  }, []);
+    
+    return () => { 
+      stateman.history.onChange = null;
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+    };
+  }, [handleCapturePreview]);
 
 
   // Update component name when canvasId changes (for new canvases)
@@ -323,6 +351,15 @@ export default function EditorPage() {
     [ir, history, setSelected, selected]
   );
 
+  const handleManualSave = useCallback(async () => {
+    try {
+      await manualSave();
+      await handleCapturePreview(true);
+    } catch (error) {
+      console.error("Error during manual save:", error);
+    }
+  }, [manualSave, handleCapturePreview]);
+
   const selectedRef = useRef(null);
   selectedRef.current = selected;
 
@@ -334,6 +371,7 @@ export default function EditorPage() {
     reorderBackward: doReorderBackward,
     reorderForward: doReorderForward,
     setSelected: setSelected,
+    manualSave: handleManualSave, // Pass the new manual save function
   });
 
   // ---- Sidebar resizer (extracted effect) ----
@@ -346,6 +384,8 @@ export default function EditorPage() {
   const previewAndExportCode = async () => {
     try {
       await stateman.save();
+      // Force preview capture when user explicitly requests preview
+      await handleCapturePreview(true);
       if (canvasId) navigate(`/preview/${canvasId}`);
       else console.error("No canvasId available for preview");
     } catch (error) {

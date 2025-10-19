@@ -15,7 +15,8 @@ export default function useEditorKeybindings({
   addElement,            // (type) => void
   reorderBackward,       // () => void
   reorderForward,          // () => void
-  setSelected
+  setSelected,
+  manualSave             // () => Promise<void> - manual save with preview capture
 }) {
   useEffect(() => {
     const isEditable = (el) => {
@@ -54,7 +55,12 @@ export default function useEditorKeybindings({
         if (key === "s") {
           e.preventDefault();
           try {
-            await stateman.save();
+            if (manualSave) {
+              await manualSave();
+            } else {
+              // Fallback to stateman.save() if manualSave not provided
+              await stateman.save();
+            }
           } catch (err) {
             // Fallback to console only; UI surfaces connection state elsewhere
             console.warn("Manual save failed:", err);
@@ -162,5 +168,5 @@ export default function useEditorKeybindings({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [history, selectedRef, deleteSelected, addElement, reorderBackward, reorderForward]);
+  }, [history, selectedRef, deleteSelected, addElement, reorderBackward, reorderForward, manualSave]);
 }
