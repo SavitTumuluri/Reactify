@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../src/lib/AuthContext'
 import { authService } from '../src/lib/authService'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import JSZip from 'jszip'
 import { editableFiles, lockedFiles } from './components/projectFiles'
 import { getDirectoryService } from './services/directoryService'
@@ -21,6 +21,7 @@ import StatusBar from './components/StatusBar'
 const Preview = () => {
   const { user } = useAuth()
   const { canvasId } = useParams()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [appContent, setAppContent] = useState('')
   const [readOnlyFile, setReadOnlyFile] = useState(null)
@@ -33,6 +34,7 @@ const Preview = () => {
   const fetchCanvasData = async () => {
     if (!canvasId || !user?.sub) {
       console.error('Missing canvasId or user authentication')
+      navigate('/home')
       return
     }
 
@@ -84,6 +86,8 @@ const Preview = () => {
     } catch (error) {
       console.error('Error fetching canvas data:', error)
       setCompilationError(`Failed to load canvas: ${error.message}`)
+      // Redirect to home on API failure
+      navigate('/home')
     } finally {
       setLoading(false)
     }

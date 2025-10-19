@@ -50,9 +50,20 @@ function AppContent() {
           }
         />
         <Route 
+          path="/preview" 
+          element={<Navigate to="/home" replace />}
+        />
+        <Route 
           path="/preview/:canvasId" 
           element={
             isAuthenticated ? <PreviewPage /> : <Navigate to="/" replace />
+          }
+        />
+        {/* Catch-all route for any undefined URLs */}
+        <Route 
+          path="*" 
+          element={
+            isAuthenticated ? <Navigate to="/home" replace /> : <Navigate to="/" replace />
           }
         />
 
