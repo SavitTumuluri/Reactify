@@ -1,11 +1,9 @@
 import React from "react";
 import { Button } from "../../components/ui/button";
-import { Separator } from "../../components/ui/separator";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   PaintBrushIcon, 
   EyeIcon, 
-  EyeSlashIcon,
   AdjustmentsHorizontalIcon,
   SwatchIcon,
   PencilIcon,
@@ -14,7 +12,7 @@ import {
   SparklesIcon,
   ArrowsPointingOutIcon
 } from "@heroicons/react/24/outline";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 
 /* ---------- helpers ---------- */
 
