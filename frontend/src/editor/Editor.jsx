@@ -61,19 +61,29 @@ export default function EditorPage() {
     }
   });
 
-  // Throttled preview capture - only runs every 10 seconds max
+  // Throttled preview capture - only runs every 60 seconds max
   const lastPreviewCaptureRef = useRef(0);
-  const PREVIEW_THROTTLE_MS = 10000; // 10 seconds
+  const isCapturingPreviewRef = useRef(false);
+  const PREVIEW_THROTTLE_MS = 60000; // 60 seconds (1 minute)
 
   const handleCapturePreview = useCallback(async (force = false) => {
     const now = Date.now();
     
+    // Prevent multiple simultaneous captures
+    if (isCapturingPreviewRef.current) {
+      console.log('Preview capture already in progress, skipping...');
+      return;
+    }
+    
     // Throttle preview captures to prevent performance issues
     if (!force && (now - lastPreviewCaptureRef.current) < PREVIEW_THROTTLE_MS) {
+      console.log('Preview capture throttled, skipping...');
       return;
     }
 
     try {
+      isCapturingPreviewRef.current = true;
+      
       // Find canvas element
       const canvasElement = document.getElementById('canvas') || 
                            document.querySelector('[data-canvas]') || 
@@ -81,19 +91,23 @@ export default function EditorPage() {
       
       
       if (canvasElement && canvasId) {
+        console.log('Starting preview capture...');
         await canvaService.captureCanvasPreview(canvasElement, canvasId);
         lastPreviewCaptureRef.current = now;
+        console.log('Preview capture completed successfully');
       } else {
         console.warn('Canvas element or canvasId not found:', { canvasElement, canvasId });
       }
     } catch (error) {
       console.error('Failed to capture canvas preview:', error);
+    } finally {
+      isCapturingPreviewRef.current = false;
     }
   }, [canvasId, userId]);
 
-  // Delayed preview capture - only after user stops editing for 5 seconds
+  // Delayed preview capture - only after user stops editing for 30 seconds
   const previewTimeoutRef = useRef(null);
-  const PREVIEW_DELAY_MS = 5000; // 5 seconds after last change
+  const PREVIEW_DELAY_MS = 30000; // 30 seconds after last change
 
   useEffect(() => {
     // Whenever history records a new change, bump version to notify autosave hook

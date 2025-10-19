@@ -17,6 +17,44 @@ class CanvasPreviewService {
   }
 
   /**
+   * Retry function with exponential backoff
+   * @param {Function} fn - Function to retry
+   * @param {number} maxRetries - Maximum number of retries
+   * @param {number} baseDelay - Base delay in milliseconds
+   * @returns {Promise<any>} - Result of the function
+   */
+  async retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
+    let lastError;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        
+        // Don't retry on certain errors
+        if (error.message?.includes('Canvas element is required') || 
+            error.message?.includes('No access token')) {
+          throw error;
+        }
+        
+        // If this is the last attempt, throw the error
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        
+        // Calculate delay with exponential backoff and jitter
+        const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+        console.warn(`Attempt ${attempt + 1} failed, retrying in ${Math.round(delay)}ms:`, error.message);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    throw lastError;
+  }
+
+  /**
    * Capture a preview of the canvas and upload it to S3
    * @param {HTMLElement} canvasElement - The canvas DOM element to capture
    * @param {string} canvasId - The canvas ID for naming the preview
@@ -71,42 +109,52 @@ class CanvasPreviewService {
       const response = await fetch(dataUrl);
       const blob = await response.blob();
 
-      // Get presigned URL for upload with simpler structure
+      // Get presigned URL for upload with retry logic
       const headers = await this.getAuthHeaders();
       
-      const presignResponse = await fetch(`${BACKEND_URL}/api/s3/presign`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          filename: `${canvasId}.png`,
-          contentType: 'image/png',
-          prefix: 'canvas-previews/'
-        })
-      });
+      const presignResponse = await this.retryWithBackoff(async () => {
+        const response = await fetch(`${BACKEND_URL}/api/s3/presign`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            filename: `${canvasId}.png`,
+            contentType: 'image/png',
+            prefix: 'canvas-previews/'
+          })
+        });
 
-      if (!presignResponse.ok) {
-        const errorText = await presignResponse.text();
-        throw new Error('Failed to get presigned URL');
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to get presigned URL: ${response.status} ${errorText}`);
+        }
+
+        return response;
+      });
 
       const responseData = await presignResponse.json();
       const { url: uploadUrl, publicUrl } = responseData;
 
-      // Upload the image to S3
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: blob,
-        headers: {
-          'Content-Type': 'image/png'
+      // Upload the image to S3 with retry logic
+      await this.retryWithBackoff(async () => {
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: blob,
+          headers: {
+            'Content-Type': 'image/png'
+          }
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Failed to upload preview to S3: ${uploadResponse.status} ${uploadResponse.statusText}`);
         }
+
+        return uploadResponse;
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload preview to S3');
-      }
-
-      // Store the preview URL in the database
-      await this.updateCanvasPreviewUrl(canvasId, publicUrl);
+      // Store the preview URL in the database with retry logic
+      await this.retryWithBackoff(async () => {
+        await this.updateCanvasPreviewUrl(canvasId, publicUrl);
+      });
 
       return publicUrl;
     } catch (error) {
