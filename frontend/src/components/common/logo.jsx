@@ -15,7 +15,7 @@ export const Logo = ({ className, uniColor }) => {
 export const LogoIcon = ({ className, uniColor }) => {
     return (
         <img
-            src="/reactify-logo.png"
+            src="/reactify-hero.jpg"
             alt="Reactify"
             width={30}
             height={30}
@@ -27,7 +27,7 @@ export const LogoIcon = ({ className, uniColor }) => {
 export const LogoStroke = ({ className }) => {
     return (
         <img
-            src="/reactify-logo.png"
+            src="/reactify-hero.jpg"
             alt="Reactify"
             width={40}
             height={40}
