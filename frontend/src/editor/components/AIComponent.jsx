@@ -79,7 +79,20 @@ export default function AIComponentView({ ir }) {
 
   return (
     <div className="w-full h-full">
-      {loading && <div className="p-3 text-sm opacity-80">Generating…</div>}
+      {loading && (
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4 p-4">
+            <div className="relative">
+              <div className="w-14 h-14 relative">
+                <div className="absolute inset-0 border-4 border-transparent border-t-indigo-500 border-r-fuchsia-500 rounded-full animate-spin"></div>
+                <div className="absolute inset-2 border-2 border-transparent border-t-pink-500 border-l-cyan-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+                <div className="absolute inset-4 bg-gradient-to-r from-indigo-500 to-fuchsia-500 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+            <div className="text-sm text-gray-200">Generating AI component…</div>
+          </div>
+        </div>
+      )}
       {error && (
         <div className="p-3 text-sm text-red-400">
           {String(error)}

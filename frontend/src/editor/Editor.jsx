@@ -10,6 +10,7 @@ import ImageGallery from "./components/ImageGallery";
 import { Save, Load } from "./state/Save";
 import { IRText } from "./components/NewEditableText";
 import { IRAIComponent } from "./components/AIComponent";
+import AIPromptModal from "./components/AIPromptModal";
 import { generateAISVG, rewriteIRWithAgent } from "../lib/aiService";
 import AgentPanel from "./components/AgentPanel";
 import StateMan from "./state/GlobalStateManager";
@@ -63,6 +64,8 @@ export default function EditorPage() {
   const [agentOpen, setAgentOpen] = useState(false);
   const [agentBusy, setAgentBusy] = useState(false);
   const [agentMsgs, setAgentMsgs] = useState([]);
+  const [aiPromptOpen, setAIPromptOpen] = useState(false);
+  const aiRectRef = useRef(null);
 
   // ---- Pan/Zoom ----
   const {
@@ -108,17 +111,8 @@ export default function EditorPage() {
         }
         const ai = new IRAIComponent(rect, { title: "Generating…", loading: true });
         elem = ai;
-        const description =
-          window.prompt("Describe what to draw (e.g., 'star', 'make a circle')", "star") || "star";
-        try {
-          const svg = await generateAISVG(description);
-          ai.set("code", svg);
-          ai.set("title", description);
-          ai.set("loading", false);
-        } catch (e) {
-          ai.set("error", e?.message || String(e));
-          ai.set("loading", false);
-        }
+        aiRectRef.current = { rect, ai };
+        setAIPromptOpen(true);
         setSelected(rect);
       }
 
@@ -130,6 +124,24 @@ export default function EditorPage() {
     },
     [ir, selected]
   );
+
+  const handleAIPromptSubmit = useCallback(async (description) => {
+    const ctx = aiRectRef.current;
+    setAIPromptOpen(false);
+    if (!ctx) return;
+    const { ai } = ctx;
+    try {
+      const svg = await generateAISVG(description);
+      ai.set("code", svg);
+      ai.set("title", description);
+      ai.set("loading", false);
+    } catch (e) {
+      ai.set("error", e?.message || String(e));
+      ai.set("loading", false);
+    } finally {
+      aiRectRef.current = null;
+    }
+  }, []);
 
   // Removed plan executor — we now exclusively use full IR rewrite
 
@@ -383,6 +395,12 @@ export default function EditorPage() {
                   onClose={() => setAgentOpen(false)}
                 />
               )}
+
+              <AIPromptModal
+                isOpen={aiPromptOpen}
+                onClose={() => { setAIPromptOpen(false); aiRectRef.current = null; }}
+                onSubmit={handleAIPromptSubmit}
+              />
 
               <div
                 id="canvas-viewport"
