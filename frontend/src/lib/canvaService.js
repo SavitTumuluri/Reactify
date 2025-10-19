@@ -1,4 +1,5 @@
 import { authService } from './authService'
+import { canvasPreviewService } from './canvasPreviewService'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -119,6 +120,25 @@ class CanvaService {
       console.error('Error updating canvas:', error)
       throw error
     }
+  }
+
+  /**
+   * Capture and upload a preview of the canvas
+   * @param {HTMLElement} canvasElement - The canvas DOM element
+   * @param {string} canvasId - The canvas ID
+   * @returns {Promise<string>} - The preview URL
+   */
+  async captureCanvasPreview(canvasElement, canvasId) {
+    return await canvasPreviewService.captureAndUploadPreview(canvasElement, canvasId);
+  }
+
+  /**
+   * Get the preview URL for a canvas
+   * @param {string} canvasId - The canvas ID
+   * @returns {string} - The preview URL
+   */
+  getCanvasPreviewUrl(canvasId) {
+    return canvasPreviewService.getPreviewUrl(canvasId);
   }
 }
 

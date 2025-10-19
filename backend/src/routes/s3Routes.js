@@ -30,22 +30,28 @@ function makeObjectKey(filename, userId, prefix = DEFAULT_PREFIX) {
   const safeName = String(filename || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
   const id = crypto.randomUUID();
   const userPrefix = userId ? `users/${userId}/` : "";
+  
+  if (prefix && prefix.includes('canvas-previews')) {
+    console.log('Using canvas-previews structure for:', filename);
+    return `${prefix}${userPrefix}${safeName}`;
+  }
+  
   return `${prefix}${userPrefix}${id}-${safeName}`;
 }
 
-/** Ensure the provided key belongs to this user and stays under our allowed prefix */
 function isUserOwnedKey(key, userId) {
   if (!key || !userId) return false;
   const normalized = String(key).replace(/^\/+/, "");
   const expected = `${DEFAULT_PREFIX}users/${userId}/`;
-  return normalized.startsWith(expected);
+  const canvasPreviewExpected = `canvas-previews/users/${userId}/`;
+  return normalized.startsWith(expected) || normalized.startsWith(canvasPreviewExpected);
 }
 
-// POST /api/s3/presign  { filename, contentType, prefix? }
 router.post("/s3/presign", verifyToken, async (req, res) => {
   try {
     const { filename, contentType, prefix } = req.body || {};
-    const userId = req.user?.sub; // Get user ID from JWT token
+    const userId = req.user?.sub;
+
 
     if (!BUCKET) return res.status(500).json({ error: "missing_bucket" });
     if (!filename || !contentType) {
@@ -56,6 +62,7 @@ router.post("/s3/presign", verifyToken, async (req, res) => {
     }
 
     const Key = makeObjectKey(filename, userId, prefix || DEFAULT_PREFIX);
+
     const command = new PutObjectCommand({ Bucket: BUCKET, Key, ContentType: contentType });
     const expiresIn = 60; // seconds
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn });

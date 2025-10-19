@@ -233,6 +233,51 @@ export class canvaController {
     }
   }
 
+  static async updateCanvasPreview(req, res) {
+    try {
+      const auth0Id = req.user.sub;
+      const { canvasId } = req.params;
+      const { previewUrl } = req.body;
+
+      if (!canvasId) {
+        return res.status(400).json({ error: 'canvasId is required' });
+      }
+
+      if (!previewUrl) {
+        return res.status(400).json({ error: 'previewUrl is required' });
+      }
+
+      const now = new Date().toISOString();
+
+      const params = {
+        TableName: canvaController.tableName,
+        Key: {
+          userId: auth0Id,
+          canvasId: canvasId,
+        },
+        UpdateExpression: 'SET previewUrl = :previewUrl, updatedAt = :now',
+        ExpressionAttributeValues: {
+          ':previewUrl': previewUrl,
+          ':now': now
+        },
+        ReturnValues: 'ALL_NEW',
+      };
+
+      const result = await docClient.send(new UpdateCommand(params));
+
+      res.json({
+        message: 'Canvas preview updated successfully',
+        canvas: {
+          ...result.Attributes,
+          canvasData: normalizeCanvasData(result.Attributes.canvasData),
+        }
+      });
+    } catch (error) {
+      console.error('Error updating canvas preview:', error);
+      res.status(500).json({ error: 'Failed to update canvas preview' });
+    }
+  }
+
   static async deleteCanvasData(req, res) {
     try {
       const auth0Id = req.user.sub;

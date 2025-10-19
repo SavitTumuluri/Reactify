@@ -16,6 +16,9 @@ router.get('/:canvasId', verifyToken, canvaController.getUserCanvas);
 // Update canvas data
 router.put('/:canvasId', verifyToken, canvaController.updateCanvasData);
 
+// Update canvas preview URL
+router.put('/:canvasId/preview', verifyToken, canvaController.updateCanvasPreview);
+
 // Delete a canvas
 router.delete('/:canvasId', verifyToken, canvaController.deleteCanvasData);
 

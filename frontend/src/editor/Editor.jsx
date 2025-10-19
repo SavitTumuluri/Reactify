@@ -19,6 +19,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import { useCanvasAutoSave } from "../lib/useCanvasAutoSave";
 import { authService } from "../lib/authService";
+import { canvaService } from "../lib/canvaService";
 
 import usePanZoom from "./hooks/usePanZoom";
 import useMediaSelection from "./hooks/useMediaSelection";
@@ -54,7 +55,32 @@ export default function EditorPage() {
   // Don't send canvasName during autosave - let backend preserve existing name
   const { manualSave } = useCanvasAutoSave(userId, canvasId, canvasDataPayload, null, {
     debounceDelay: 800,
+    onSaveSuccess: async (data) => {
+      try {
+        await handleCapturePreview();
+      } catch (error) {
+      }
+    }
   });
+
+  const handleCapturePreview = useCallback(async () => {
+    try {
+
+      // Find canvas element
+      const canvasElement = document.getElementById('canvas') || 
+                           document.querySelector('[data-canvas]') || 
+                           document.querySelector('[data-export-root]');
+      
+      
+      if (canvasElement && canvasId) {
+        await canvaService.captureCanvasPreview(canvasElement, canvasId);
+      } else {
+        console.warn('Canvas element or canvasId not found:', { canvasElement, canvasId });
+      }
+    } catch (error) {
+      console.error('Failed to capture canvas preview:', error);
+    }
+  }, [canvasId, userId]);
 
   useEffect(() => {
     // Whenever history records a new change, bump version to notify autosave hook
@@ -63,6 +89,7 @@ export default function EditorPage() {
     };
     return () => { stateman.history.onChange = null; };
   }, []);
+
 
   // Update component name when canvasId changes (for new canvases)
   useEffect(() => {
@@ -164,8 +191,11 @@ export default function EditorPage() {
     try {
       const state = Save(ir);
       const resp = await rewriteIRWithAgent(text, state);
-      const { ir: newIr } = resp || {};
-      if (newIr) {
+      
+      if (resp?.action === "conversation") {
+        setAgentMsgs((m) => [...m, { role: "assistant", text: resp.message || "I'm here to help! How can I assist you with your canvas?" }]);
+      } else if (resp?.action === "modify_ir" && resp.ir) {
+        const newIr = resp.ir;
         const sanitize = (node) => {
           if (!node || typeof node !== "object") return node;
           const name = node.name;
@@ -202,13 +232,24 @@ export default function EditorPage() {
           stateman.history.clear();
           stateman.setRoot?.(loaded);
         }
-        setAgentMsgs((m) => [...m, { role: "agent", text: "Rewrote IR" }]);
+        setAgentMsgs((m) => [...m, { role: "assistant", text: resp.message || "I've updated your canvas as requested." }]);
       } else {
-        setAgentMsgs((m) => [...m, { role: "agent", text: "No IR returned" }]);
+        // Fallback for old format or unexpected response
+        setAgentMsgs((m) => [...m, { role: "assistant", text: "I didn't understand that request. Could you please try rephrasing it? For example, you can ask me to 'add a blue rectangle' or 'what does this application do?'" }]);
       }
     } catch (e) {
-      console.error(e);
-      setAgentMsgs((m) => [...m, { role: "agent", text: `Error: ${e?.message || String(e)}` }]);
+      console.error("Agent error:", e);
+      let errorMessage = "Sorry, I encountered an error. Please try again!";
+      
+      if (e?.message?.includes("JSON")) {
+        errorMessage = "I had trouble processing that request. Could you try rephrasing it? For example, ask 'What does this application do?' or 'Add a blue rectangle'.";
+      } else if (e?.message?.includes("fetch")) {
+        errorMessage = "I'm having trouble connecting. Please check your internet connection and try again.";
+      } else if (e?.message) {
+        errorMessage = `Sorry, I encountered an error: ${e.message}. Please try again or ask me something else!`;
+      }
+      
+      setAgentMsgs((m) => [...m, { role: "assistant", text: errorMessage }]);
     } finally {
       setAgentBusy(false);
     }
@@ -282,7 +323,6 @@ export default function EditorPage() {
     [ir, history, setSelected, selected]
   );
 
-  // ---- Keybindings (extracted effect, Editor supplies fresh refs & callbacks) ----
   const selectedRef = useRef(null);
   selectedRef.current = selected;
 
@@ -313,7 +353,6 @@ export default function EditorPage() {
     }
   };
 
-  // ⭐ NEW: Export to PNG orchestration (uses CanvasContainer's imperative API)
   const canvasRef = useRef(null);
 
   const exportCanvasToPNG = useCallback(
@@ -325,10 +364,8 @@ export default function EditorPage() {
           return;
         }
 
-        // Optional: freeze UI adornments (selectors, guides) while capturing
         handle.setExporting?.(true);
 
-        // Ensure webfonts are ready before rasterization
         if (document.fonts && document.fonts.ready) {
           try { await document.fonts.ready; } catch {}
         }
@@ -341,24 +378,20 @@ export default function EditorPage() {
           return;
         }
 
-        // Build a clean filename from componentName
         const baseName = (ir.get?.("componentName") || "Canvas").toString().replace(/[^\w\-]+/g, "_");
         const fileName = `${baseName}.png`;
 
-        // Render the DOM node → PNG data URL at desired size/scale
         const dataUrl = await toPng(node, {
           cacheBust: true,
           width: Math.round(width * scale),
           height: Math.round(height * scale),
           style: {
-            // neutralize any transforms on the node itself (if any)
             transform: "scale(1)",
             transformOrigin: "top left",
             width: `${Math.round(width * scale)}px`,
             height: `${Math.round(height * scale)}px`,
           },
-          // If you later mark elements with data attributes to exclude from export:
-          // filter: (domNode) => !domNode.closest?.("[data-selection],[data-guides]")
+
         });
 
         // Trigger a download
@@ -397,8 +430,8 @@ export default function EditorPage() {
         onOpenGallery={() => setIsGalleryOpen(true)}
         onAddElement={addElement}
         onOpenAgent={() => setAgentOpen(true)}
-        // ⭐ NEW: hook up "Export to PNG" button in Header
         onExportPNG={() => exportCanvasToPNG({ scale: 1 })}
+        onCapturePreview={handleCapturePreview}
       />
 
       <div className="flex h-full">
@@ -468,10 +501,8 @@ export default function EditorPage() {
                   onElementSelect={(node) => setSelected(node)}
                   selected={selected}
                   onCheckpoint={() => {
-                    // Trigger save when a checkpoint-worthy interaction completes
                     try { stateman.save(); } catch {}
                   }}
-                  // ⭐ NEW: attach imperative API for export
                   ref={canvasRef}
                 />
               </div>

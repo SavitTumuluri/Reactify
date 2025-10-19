@@ -30,8 +30,8 @@ export default function Header({
   onOpenGallery,
   onAddElement,
   onOpenAgent,
-  // ⭐ NEW:
-  onExportPNG
+  onExportPNG,
+  onCapturePreview,
 }) {
   const fileInputRef = React.useRef(null);
   const { showError } = useNotification();
@@ -43,9 +43,7 @@ export default function Header({
     if (!file) return;
     try {
       await uploadImageToS3(file, { prefix: 'uploads/' });
-      // reset input so selecting the same file later retriggers change
       e.target.value = '';
-      // Open gallery after upload so user can select the uploaded image
       onOpenGallery?.();
     } catch (err) {
       console.error('Upload failed', err);
@@ -328,6 +326,20 @@ export default function Header({
                       </button>
                     )}
                   </Menu.Item>
+
+                  {/* Capture Preview Button */}
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => onCapturePreview?.()}
+                        className={`${active ? 'bg-gray-700 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
+                      >
+                        <CloudArrowUpIcon className="mr-3 h-4 w-4" />
+                        Capture Preview
+                      </button>
+                    )}
+                  </Menu.Item>
+
 
                   <Menu.Item>
                     {({ active }) => (

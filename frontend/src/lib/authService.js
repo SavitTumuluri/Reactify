@@ -134,6 +134,11 @@ export class AuthService {
     return null;
   }
 
+  getUserId() {
+    const user = this.getCurrentUser();
+    return user?.sub;
+  }
+
   logout() {
     localStorage.removeItem('auth0_session');
     window.location.href = this.getLogoutUrl();

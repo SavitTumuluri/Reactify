@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { BriefcaseIcon, DocumentIcon } from '@heroicons/react/24/outline'
+import { BriefcaseIcon, DocumentIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
 import YourDesigns from './components/YourDesigns'
 import Templates from './components/Templates'
 import ItemSidebar from './components/ItemSidebar'
@@ -82,15 +82,24 @@ const Home = () => {
               </div>
               
               <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className="text-sm text-white">{user?.name || 'User'}</p>
-                  <p className="text-xs text-gray-400">{user?.email || 'user@example.com'}</p>
+                {/* User Info */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                    <UserCircleIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-white">{user?.name || 'User'}</p>
+                    <p className="text-xs text-gray-400">{user?.email || 'user@example.com'}</p>
+                  </div>
                 </div>
+                
+                {/* Logout Button */}
                 <button
                   onClick={logout}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  className="group flex items-center space-x-2 px-4 py-2 bg-red-600/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-600/20 hover:border-red-500/40 hover:text-red-300 transition-all duration-200 hover:scale-105"
                 >
-                  Logout
+                  <ArrowRightOnRectangleIcon className="h-4 w-4 group-hover:rotate-12 transition-transform duration-200" />
+                  <span className="text-sm font-medium">Logout</span>
                 </button>
               </div>
             </div>

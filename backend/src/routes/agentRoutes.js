@@ -1,3 +1,5 @@
+// P.S. THIS IS NO WHERE NEAR A SOLUTION FOR PRODUCTION LOL, JUST DONT HAVE TIME OR SKILL TO GET THIS WORK HAHA
+
 import express from "express";
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
 
@@ -44,7 +46,25 @@ Rules:
 
 // System prompt for full-IR rewriting
 const SYSTEM_FULL_IR = `
-You are an IR rewriter for a canvas editor.
+You are an intelligent AI assistant for a canvas editor. You can help users create and modify visual designs.
+
+You have two modes:
+1. CANVAS_EDITING: When the user wants to create, modify, or arrange visual elements
+2. CONVERSATIONAL: When the user asks questions, needs help, or makes non-canvas requests
+
+For CANVAS_EDITING requests, you should:
+- CAREFULLY analyze the current IR (intermediate representation) of the canvas
+- Make MINIMAL changes - only add/modify what the user specifically requested
+- PRESERVE ALL existing elements unless explicitly asked to delete/clear
+- NEVER replace the entire canvas unless user says "clear" or "reset"
+- When adding elements, place them alongside existing elements, not replace them
+- Return the updated IR JSON with existing elements intact
+
+For CONVERSATIONAL requests, you should:
+- Provide helpful, friendly responses
+- Explain how to use the canvas editor
+- Answer questions about the application
+- NOT modify the IR
 
 Input: JSON representing the current IR, produced by Save(ir) with this schema:
 - { "name": string, "_data": object, "children": Save[] }
@@ -53,22 +73,55 @@ Input: JSON representing the current IR, produced by Save(ir) with this schema:
 - Canvas background color is in root _data.styles.canvasBackground.
 - Elements should preserve their existing _data.elementId values where present.
 
-Color and styles normalization rules (follow these to ensure correct rendering):
-- Filled shapes (IRRect, IRCircle, IRTriangle, IRStar): set color via _data.styles.backgroundColor (NOT stroke). If you only have a single color, use backgroundColor. You may also include border properties.
-- Lines (IRLine): set _data.styles.stroke (color string), _data.styles.strokeWidth (number), and optionally _data.styles.strokeOpacity (0..1). Do NOT rely on backgroundColor for lines.
-- Text (IRText): set _data.styles.color for the text color.
+Color and styles normalization rules:
+- Filled shapes (IRRect, IRCircle, IRTriangle, IRStar): set color via _data.styles.backgroundColor
+- Lines (IRLine): set _data.styles.stroke (color string), _data.styles.strokeWidth (number)
+- Text (IRText): set _data.styles.color for the text color
 
-Rotation and lines:
-- All placeable elements may include _data.angle in degrees.
-- IRLine specifics:
-  - Preferred styles in _data.styles: stroke (color string), strokeWidth (number), strokeOpacity (0..1).
-  - Direction can be set either by _data.angle (e.g., 90 for vertical) OR by endpoints:
-    - _data.start: {x:0..1, y:0..1} and _data.end: {x:0..1, y:0..1} within the line's box.
-    - Example vertical without angle: start {x:0.5,y:0}, end {x:0.5,y:1}.
+CRITICAL RULES FOR CANVAS EDITING:
+1. ALWAYS preserve the existing IR structure and all existing elements
+2. When adding new elements, append them to the existing children array
+3. NEVER replace the entire children array unless user explicitly says "clear" or "reset"
+4. Maintain the same canvas container structure with existing styles
+5. Only modify what the user specifically requested
+6. Keep existing element IDs and properties intact
+7. If you are unsure, ALWAYS preserve existing elements and only add new ones
+8. NEVER delete or remove existing elements unless the user explicitly asks to delete/remove/clear
 
-Task: Modify the IR minimally to satisfy the user's instruction. DEFAULT IS NON-DESTRUCTIVE; keep existing elements unless the user explicitly asks to replace/delete/clear.
+Response format (MUST be valid JSON):
+- If it's a CANVAS_EDITING request: Return JSON with {"action": "modify_ir", "ir": updatedIR, "message": "helpful description of what was done"}
+- If it's a CONVERSATIONAL request: Return JSON with {"action": "conversation", "message": "your helpful response"}
 
-Output: ONLY the updated IR JSON in the same Save format. No markdown, no code fences, no commentary.
+IMPORTANT: 
+- Always return valid JSON format
+- Do not include any text before or after the JSON
+- Escape any special characters in strings
+- Keep messages concise and helpful
+
+Examples of CONVERSATIONAL requests (don't modify IR):
+- "What does this application do?"
+- "How do I add a rectangle?"
+- "What colors are available?"
+- "Help me understand the interface"
+- "What can you do?"
+- "How do I save my work?"
+
+Examples of CANVAS_EDITING requests (modify IR):
+- "Add a blue rectangle in the center"
+- "Make the background red"
+- "Create a star shape"
+- "Move the circle to the left"
+- "Delete the rectangle"
+- "Add text saying 'Hello World'"
+
+Example responses:
+For "What does this application do?" → {"action": "conversation", "message": "This is a visual canvas editor where you can create designs by adding shapes, text, and other elements. You can ask me to add rectangles, circles, stars, text, or change colors and backgrounds."}
+
+For "Add a blue rectangle" → {"action": "modify_ir", "ir": {...}, "message": "I've added a blue rectangle to your canvas."}
+
+EXAMPLE: If current IR has children: [existingRect1, existingRect2] and user says "add a circle":
+- CORRECT: Return IR with children: [existingRect1, existingRect2, newCircle]
+- WRONG: Return IR with children: [newCircle] (this deletes existing elements)
 `;
 
 // Utility: clamp between 0 and 1
@@ -235,7 +288,9 @@ router.post("/ai/agent/rewrite", async (req, res) => {
     }
 
     const stateJson = JSON.stringify(state).slice(0, 100000); // generous cap
-    const userPrompt = `Instruction: ${description}\nCurrent IR (JSON):\n${stateJson}`;
+    const userPrompt = `Instruction: ${description}\nCurrent IR (JSON):\n${stateJson}
+
+IMPORTANT: The current IR contains existing elements. You MUST preserve all existing elements and only add/modify what the user specifically requested. Do NOT replace the entire children array.`;
 
     const cmd = new ConverseCommand(makeConverseParams({
       system: [{ text: SYSTEM_FULL_IR }],
@@ -245,14 +300,99 @@ router.post("/ai/agent/rewrite", async (req, res) => {
 
     const out = await bedrock.send(cmd);
     const text = out?.output?.message?.content?.[0]?.text || "";
-    const jsonText = (() => {
-      try { JSON.parse(text); return text; } catch (_) {}
-      const match = text.match(/\{[\s\S]*\}$/);
-      return match ? match[0] : text;
-    })();
-    const updated = JSON.parse(jsonText);
-    if (!updated || typeof updated !== "object") throw new Error("invalid IR");
-    return res.json({ ir: updated });
+    
+    // Try to parse the response as JSON
+    let response;
+    try {
+      // Clean the text first to handle control characters
+      const cleanedText = text.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+      response = JSON.parse(cleanedText);
+    } catch (parseError) {
+      console.log("JSON parse error:", parseError.message);
+      console.log("Raw response:", text);
+      
+      // Try to extract JSON from the text using a more robust approach
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const cleanedJson = jsonMatch[0].replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+          response = JSON.parse(cleanedJson);
+        } catch (jsonError) {
+          console.log("JSON extraction error:", jsonError.message);
+          // Fallback: treat as conversational response
+          response = {
+            action: "conversation",
+            message: text.trim()
+          };
+        }
+      } else {
+        // Fallback: treat as conversational response
+        response = {
+          action: "conversation",
+          message: text.trim()
+        };
+      }
+    }
+    
+    // Validate response format
+    if (!response || typeof response !== "object") {
+      throw new Error("Invalid response format");
+    }
+    
+    // Handle different response types
+    if (response.action === "conversation") {
+      return res.json({ 
+        action: "conversation", 
+        message: response.message || "I'm here to help! How can I assist you with your canvas?" 
+      });
+    } else if (response.action === "modify_ir" && response.ir) {
+      // Validate that existing elements are preserved
+      const originalChildrenCount = state?.children?.length || 0;
+      const newChildrenCount = response.ir?.children?.length || 0;
+      
+      // Log for debugging
+      console.log(`IR modification: Original ${originalChildrenCount} elements, New ${newChildrenCount} elements`);
+      
+      // Check if user explicitly asked to delete/clear
+      const isDeleteRequest = description.toLowerCase().includes('delete') || 
+                             description.toLowerCase().includes('remove') || 
+                             description.toLowerCase().includes('clear') || 
+                             description.toLowerCase().includes('reset');
+      
+      // If we're not deleting and have fewer elements, try to fix it
+      if (!isDeleteRequest && newChildrenCount < originalChildrenCount) {
+        console.log("AI tried to delete elements without explicit request, attempting to fix");
+        
+        // Try to merge existing elements with new ones
+        const originalChildren = state?.children || [];
+        const newChildren = response.ir?.children || [];
+        
+        // Create a corrected IR that preserves existing elements
+        const correctedIR = {
+          ...response.ir,
+          children: [...originalChildren, ...newChildren]
+        };
+        
+        return res.json({ 
+          action: "modify_ir", 
+          ir: correctedIR, 
+          message: "I've added the requested elements while preserving your existing canvas content." 
+        });
+      }
+      
+      return res.json({ 
+        action: "modify_ir", 
+        ir: response.ir, 
+        message: response.message || "I've updated your canvas as requested." 
+      });
+    } else {
+      // Fallback: try to treat as IR modification
+      return res.json({ 
+        action: "modify_ir", 
+        ir: response, 
+        message: "I've updated your canvas." 
+      });
+    }
   } catch (err) {
     return res.status(500).json({ error: String(err?.message || err) });
   }

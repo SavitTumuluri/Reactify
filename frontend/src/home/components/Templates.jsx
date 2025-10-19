@@ -191,8 +191,20 @@ const Templates = ({ onItemClick }) => {
                 >
                   
                   <div className="aspect-video bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg mb-3 flex items-center justify-center text-4xl relative overflow-hidden">
-                    <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-                    <span className="relative z-10">🎨</span>
+                    {template.previewImage ? (
+                      <img 
+                        src={template.previewImage} 
+                        alt={template.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div className={`absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center ${template.previewImage ? 'hidden' : 'flex'}`}>
+                      <span className="relative z-10">🎨</span>
+                    </div>
                   </div>
                   
                   <div className="space-y-2">

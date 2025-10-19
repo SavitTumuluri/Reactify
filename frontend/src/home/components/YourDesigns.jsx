@@ -139,15 +139,15 @@ const YourDesigns = ({ onItemClick, refreshTrigger }) => {
     return canvas && canvasId && (canvas.name || `Canvas ${canvasId.slice(-8)}`).toLowerCase().includes(searchQuery.toLowerCase())
   })
 
-  // Convert canvases to design format for display
   const canvasDesigns = filteredCanvases.map(canvas => {
     const canvasId = canvas.canvasId || canvas.id || canvas._id
+    const previewUrl = canvas.previewUrl || canvaService.getCanvasPreviewUrl(canvasId)
     return {
       id: canvasId,
       title: canvas.name || `Canvas ${canvasId?.slice(-8) || 'Unknown'}`,
       status: 'blue',
       time: (canvas.timestamp || canvas.updatedAt) ? new Date(canvas.timestamp || canvas.updatedAt).toLocaleDateString() : 'Unknown',
-      preview: '🎨',
+      preview: previewUrl,
       type: 'canvas',
       canvasData: canvas.canvasData || {},
       timestamp: canvas.timestamp || canvas.updatedAt
@@ -210,102 +210,59 @@ const YourDesigns = ({ onItemClick, refreshTrigger }) => {
               Your Designs
             </motion.h2>
             <div className="flex items-center space-x-4">
-              <motion.select 
-                className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors duration-300"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+              <select className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors duration-300">
                 <option>Owner</option>
-              </motion.select>
-              <motion.select 
-                className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors duration-300"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+              </select>
+              <select className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors duration-300">
                 <option>Designs</option>
-              </motion.select>
+              </select>
               <div className="flex space-x-2">
-                <motion.button 
-                  className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors duration-300"
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  whileTap={{ scale: 0.95 }}
-                >
+                <button className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors duration-300">
                   <ChevronDown className="h-4 w-4" />
-                </motion.button>
-                <motion.button 
-                  className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors duration-300"
-                  whileHover={{ scale: 1.1, rotate: -5 }}
-                  whileTap={{ scale: 0.95 }}
-                >
+                </button>
+                <button className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors duration-300">
                   <Menu className="h-4 w-4" />
-                </motion.button>
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Electric Create Canvas Form */}
-          <AnimatePresence>
-            {showCreateForm && (
-              <motion.div 
-                className="mb-6 p-4 bg-gradient-to-r from-gray-700 to-gray-600 rounded-xl border border-gray-600"
-                initial={{ opacity: 0, height: 0, y: -20 }}
-                animate={{ opacity: 1, height: "auto", y: 0 }}
-                exit={{ opacity: 0, height: 0, y: -20 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-              >
-                <motion.h3 
-                  className="text-lg font-semibold text-white mb-3 flex items-center gap-2"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
+          {/* Create Canvas Form */}
+          {showCreateForm && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-gray-700 to-gray-600 rounded-xl border border-gray-600">
+              <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                <Palette className="h-5 w-5 text-purple-400" />
+                Create New Canvas
+              </h3>
+              <div className="flex space-x-3">
+                <input
+                  type="text"
+                  value={newCanvasName}
+                  onChange={(e) => setNewCanvasName(e.target.value)}
+                  placeholder="Enter canvas name..."
+                  className="flex-1 px-3 py-2 bg-gray-600 text-white rounded-lg border border-gray-500 focus:border-purple-500 focus:outline-none transition-colors duration-300"
+                  autoFocus
+                />
+                <button
+                  onClick={handleCreateCanvas}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 transition-all duration-300 flex items-center gap-2"
+                  disabled={!newCanvasName.trim()}
                 >
-                  <Palette className="h-5 w-5 text-purple-400" />
-                  Create New Canvas
-                </motion.h3>
-                <div className="flex space-x-3">
-                  <motion.input
-                    type="text"
-                    value={newCanvasName}
-                    onChange={(e) => setNewCanvasName(e.target.value)}
-                    placeholder="Enter canvas name..."
-                    className="flex-1 px-3 py-2 bg-gray-600 text-white rounded-lg border border-gray-500 focus:border-purple-500 focus:outline-none transition-colors duration-300"
-                    autoFocus
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                    whileFocus={{ scale: 1.02 }}
-                  />
-                  <motion.button
-                    onClick={handleCreateCanvas}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 transition-all duration-300 flex items-center gap-2"
-                    disabled={!newCanvasName.trim()}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Create
-                  </motion.button>
-                  <motion.button
-                    onClick={() => {
-                      setShowCreateForm(false)
-                      setNewCanvasName('')
-                    }}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors duration-300"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <X className="h-4 w-4" />
-                  </motion.button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <Sparkles className="h-4 w-4" />
+                  Create
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCreateForm(false)
+                    setNewCanvasName('')
+                  }}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors duration-300"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Error Display */}
           {error && (
@@ -324,14 +281,9 @@ const YourDesigns = ({ onItemClick, refreshTrigger }) => {
           {/* Design Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Simple Create New Canvas Card */}
-            <motion.div
+            <div
               onClick={() => setShowCreateForm(true)}
               className="bg-gray-700 rounded-xl p-4 hover:bg-gray-600 transition-colors duration-200 cursor-pointer group border-2 border-dashed border-gray-500 hover:border-purple-400"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
             >
               <div className="aspect-video bg-gray-600 rounded-lg mb-3 flex items-center justify-center text-4xl group-hover:bg-gray-500 transition-colors duration-200">
                 <Plus className="h-12 w-12 text-gray-400 group-hover:text-white transition-colors duration-200" />
@@ -340,28 +292,30 @@ const YourDesigns = ({ onItemClick, refreshTrigger }) => {
                 <p className="text-sm font-medium text-white">Create New Canvas</p>
                 <p className="text-xs text-gray-400 mt-1">Start a new design</p>
               </div>
-            </motion.div>
+            </div>
 
             {/* Canvas Cards */}
-            <AnimatePresence>
-              {canvasDesigns.map((design, index) => (
-                <motion.div
-                  key={design.id}
-                  onClick={() => handleLoadCanvas(design)}
-                  className="bg-gray-700 rounded-xl p-4 hover:bg-gray-600 transition-colors duration-200 cursor-pointer group relative"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ 
-                    duration: 0.3, 
-                    delay: index * 0.05 
-                  }}
-                  layout
-                >
-                  <div className="aspect-video bg-white rounded-lg mb-3 flex items-center justify-center text-4xl group-hover:bg-gray-50 transition-colors duration-200">
-                    {design.preview}
+            {canvasDesigns.map((design, index) => (
+              <div
+                key={design.id}
+                onClick={() => handleLoadCanvas(design)}
+                className="bg-gray-700 rounded-xl p-4 hover:bg-gray-600 transition-colors duration-200 cursor-pointer group relative"
+              >
+                  <div className="aspect-video bg-white rounded-lg mb-3 flex items-center justify-center text-4xl group-hover:bg-gray-50 transition-colors duration-200 overflow-hidden">
+                    {design.preview && design.preview.startsWith('http') ? (
+                      <img 
+                        src={design.preview} 
+                        alt={design.title}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-full h-full flex items-center justify-center ${design.preview && design.preview.startsWith('http') ? 'hidden' : 'flex'}`}>
+                      🎨
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
@@ -371,7 +325,7 @@ const YourDesigns = ({ onItemClick, refreshTrigger }) => {
                         <p className="text-xs text-gray-400">{design.time}</p>
                       </div>
                     </div>
-                    <motion.button
+                    <button
                       onClick={(e) => handleDeleteCanvas(design.id, e)}
                       disabled={deletingCanvasId === design.id}
                       className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg ${
@@ -380,15 +334,12 @@ const YourDesigns = ({ onItemClick, refreshTrigger }) => {
                           : 'text-red-400 hover:text-red-300 hover:bg-red-900/20'
                       }`}
                       title={deletingCanvasId === design.id ? "Deleting..." : "Delete canvas"}
-                      whileHover={deletingCanvasId === design.id ? {} : { scale: 1.1 }}
-                      whileTap={deletingCanvasId === design.id ? {} : { scale: 0.9 }}
                     >
                       <Trash2 className="h-4 w-4" />
-                    </motion.button>
+                    </button>
                   </div>
-                </motion.div>
+                </div>
               ))}
-            </AnimatePresence>
 
           </div>
         </div>
