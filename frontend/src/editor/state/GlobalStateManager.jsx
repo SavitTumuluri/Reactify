@@ -60,8 +60,12 @@ class GlobalStateManager {
       // --- SOCKET: connect + live status subscription
     useEffect(() => {
         const serverUrl = import.meta.env?.VITE_BACKEND_URL;
+        console.log('[GlobalStateManager] Connecting to WebSocket with URL:', serverUrl);
         websocketService.connect(serverUrl);
-        const handler = ({ isConnected }) => setIsConnected(isConnected);
+        const handler = ({ isConnected }) => {
+          console.log('[GlobalStateManager] WebSocket connection status:', isConnected);
+          setIsConnected(isConnected);
+        };
         websocketService.onStatusChange(handler);
         return () => websocketService.offStatusChange(handler);
     }, []);

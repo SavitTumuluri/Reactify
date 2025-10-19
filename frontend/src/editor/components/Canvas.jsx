@@ -7,7 +7,7 @@ import React, {
   useImperativeHandle,
   forwardRef,
 } from "react";
-import { IRRoot } from "../core/IR";
+import { IRRoot } from "../core/IR"; 
 import { RegisterComponent } from "../state/ComponentRegistry";
 
 export class IRCanvasContainer extends IRRoot {
@@ -61,11 +61,13 @@ export class IRCanvasContainer extends IRRoot {
 
     return `
 ${importString}
-export const ${sanitizedName} = (props) => {
+const ${sanitizedName} = (props) => {
   ${effectString}
   const canvasBackground = "${canvasBackground}";
   return <GraphicBox canvasBackground={canvasBackground}>${divString}</GraphicBox>
 }
+
+export default ${sanitizedName};
     `
   }
 

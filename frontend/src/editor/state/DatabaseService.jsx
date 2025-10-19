@@ -63,13 +63,18 @@ export async function loadFromDB(userId, canvasId) {
         cleanup();
 
         try {
+          console.log('[loadFromDB] Received canvas data:', data);
+          
           // Parse the canvas data (server stores JSON string)
           const parsed = typeof data.canvasData === 'string'
             ? JSON.parse(data.canvasData)
             : data.canvasData;
 
+          console.log('[loadFromDB] Parsed canvas data:', parsed);
+
           // Return IR object when available
           const irObject = parsed?.ir ?? parsed ?? null;
+          console.log('[loadFromDB] Extracted IR object:', irObject);
           resolve(irObject);
         } catch (error) {
           console.error('loadFromDB: Error parsing data', error);

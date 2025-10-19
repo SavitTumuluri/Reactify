@@ -73,7 +73,10 @@ export class SocketHandler {
         try {
           const { userId, canvasId } = data || {};
 
+          console.log(`[socket] get-canvas-data request: userId=${userId}, canvasId=${canvasId}`);
+
           if (!userId || !canvasId) {
+            console.log('[socket] Missing required fields for get-canvas-data');
             socket.emit('canvas-data-error', {
               error: 'Missing required fields: userId or canvasId',
             });
@@ -81,6 +84,8 @@ export class SocketHandler {
           }
 
           const item = await this.canvasService.getCanvasData(userId, canvasId);
+          console.log(`[socket] Canvas data retrieved:`, item ? 'Found' : 'Not found');
+          
           const payload = {
             userId,
             canvasId,
@@ -90,6 +95,7 @@ export class SocketHandler {
             updatedAt: item?.updatedAt,
           };
 
+          console.log(`[socket] Sending canvas data response:`, JSON.stringify(payload, null, 2));
           socket.emit('canvas-data-response', payload);
         } catch (error) {
           console.error('[socket] get-canvas-data → error:', error);

@@ -70,6 +70,7 @@ function serializeCanvasDataForStorage(canvasData) {
 export class CanvasDataService {
   constructor() {
     this.tableName = process.env.DYNAMODB_TABLE_NAME || 'reactify-canvas-data';
+    console.log(`[CanvasDataService] Using canvas table: ${this.tableName}`);
   }
 
   /**
@@ -142,10 +143,16 @@ export class CanvasDataService {
         },
       };
 
+      console.log(`[CanvasDataService] Getting canvas data for userId=${userId}, canvasId=${canvasId}`);
       const result = await docClient.send(new GetCommand(params));
-      if (!result.Item) return undefined;
+      if (!result.Item) {
+        console.log(`[CanvasDataService] No canvas found for userId=${userId}, canvasId=${canvasId}`);
+        return undefined;
+      }
 
+      console.log(`[CanvasDataService] Raw canvas data from DB:`, JSON.stringify(result.Item, null, 2));
       const dataObj = normalizeCanvasData(result.Item.canvasData);
+      console.log(`[CanvasDataService] Normalized canvas data:`, JSON.stringify(dataObj, null, 2));
 
       return {
         ...result.Item,

@@ -85,7 +85,24 @@ class CanvasPreviewService {
           transformOrigin: 'center center',
         },
         filter: (node) => {
-          // Include all nodes, don't filter anything
+          // Exclude Monaco Editor stylesheets and other problematic CSS
+          if (node.tagName === 'LINK' && node.href && (
+            node.href.includes('monaco-editor') ||
+            node.href.includes('vs/editor') ||
+            node.href.includes('codicon')
+          )) {
+            return false;
+          }
+          
+          // Exclude style elements with problematic content
+          if (node.tagName === 'STYLE' && node.textContent && (
+            node.textContent.includes('@font-face') ||
+            node.textContent.includes('codicon') ||
+            node.textContent.includes('monaco')
+          )) {
+            return false;
+          }
+          
           return true;
         }
       };
@@ -100,6 +117,27 @@ class CanvasPreviewService {
           quality: 0.8,
           pixelRatio: 1,
           backgroundColor: '#ffffff',
+          filter: (node) => {
+            // Exclude Monaco Editor stylesheets and other problematic CSS
+            if (node.tagName === 'LINK' && node.href && (
+              node.href.includes('monaco-editor') ||
+              node.href.includes('vs/editor') ||
+              node.href.includes('codicon')
+            )) {
+              return false;
+            }
+            
+            // Exclude style elements with problematic content
+            if (node.tagName === 'STYLE' && node.textContent && (
+              node.textContent.includes('@font-face') ||
+              node.textContent.includes('codicon') ||
+              node.textContent.includes('monaco')
+            )) {
+              return false;
+            }
+            
+            return true;
+          }
         };
         
         dataUrl = await toPng(captureElement, fallbackOptions);

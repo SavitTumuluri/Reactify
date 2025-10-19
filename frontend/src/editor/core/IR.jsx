@@ -155,12 +155,23 @@ export class IRRoot extends IR {
     let divString = ""
     for (const child of this.children) divString += child.toReact() + "\n"
 
+    // Get component name from IR data, with fallback
+    const componentName = this.get("componentName") || "App";
+    
+    // Sanitize component name to be a valid JavaScript identifier
+    const sanitizedName = componentName
+      .replace(/[^a-zA-Z0-9_$]/g, '') // Remove invalid characters
+      .replace(/^[0-9]/, '_$&') // Ensure it doesn't start with a number
+      || 'App'; // Fallback if name becomes empty
+
     return `
 ${importString}
-export default function TestBaseIRComponent(props) {
+function ${sanitizedName}(props) {
   ${effectString}
   return <div>${divString}</div>
 }
+
+export default ${sanitizedName};
     `
   }
 

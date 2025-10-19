@@ -23,7 +23,7 @@ function serializeCanvasDataForStorage(canvasData) {
 dotenv.config();
 
 export class templateController{
-    static tableName = 'public-canva';
+    static tableName = process.env.TEMPLATE_TABLE_NAME || 'public-canva';
 
     // Generate S3 preview URL for templates
     static generatePreviewUrl(canvaId) {
@@ -34,6 +34,7 @@ export class templateController{
 
     static async getAllTemplateCanvas(req, res) {
         try {
+            console.log(`[TemplateController] Using template table: ${templateController.tableName}`);
             const params = {
                 TableName: templateController.tableName,
             };
@@ -69,6 +70,8 @@ export class templateController{
             const { canvaId } = req.params; // Template canvaId
             const auth0Id = req.user.sub; // User who's copying
 
+            console.log(`[TemplateController] Copying template from table: ${templateController.tableName}`);
+            console.log(`[TemplateController] Template canvaId: ${canvaId}, User: ${auth0Id}`);
 
             // 1. Get the template from public-canva table
             const getParams = {
@@ -79,10 +82,17 @@ export class templateController{
             const templateResult = await docClient.send(new GetCommand(getParams));
 
             if (!templateResult.Item) {
+                console.log(`[TemplateController] Template not found: ${canvaId}`);
                 return res.status(404).json({ error: 'Template not found' });
             }
 
             const template = templateResult.Item;
+            console.log(`[TemplateController] Template found:`, {
+                canvaId: template.canvaId,
+                name: template.name,
+                hasCanvaData: !!template.canvaData,
+                canvaDataType: typeof template.canvaData
+            });
 
             // 2. Create a new canvas for the user with the template data
             const newCanvasId = `canvas-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -163,13 +173,18 @@ export class templateController{
                 timestamp: new Date().toISOString()
             };
 
-            // Put into the main canvas table - MAKE SURE THIS TABLE NAME IS CORRECT
+            // Put into the main canvas table - use the same table name as CanvasDataService
+            const canvasTableName = process.env.DYNAMODB_TABLE_NAME || 'reactify-canvas-data';
             const putParams = {
-                TableName: 'reactify-canvas-data', // ⚠️ Change this to your actual canvas table name!
+                TableName: canvasTableName,
                 Item: newCanvas
             };
+            
+            console.log(`[TemplateController] Using table name: ${canvasTableName}`);
 
+            console.log('Creating new canvas with data:', JSON.stringify(newCanvas, null, 2));
             await docClient.send(new PutCommand(putParams));
+            console.log('Canvas created successfully in database');
 
             // 3. Increment the template's copy count
             const updateParams = {
