@@ -37,8 +37,9 @@ class WebSocketService {
 
   connect(serverUrl) {
     this.serverUrl = serverUrl;
+    console.log('WebSocket connecting to:', serverUrl);
 
-    // If there’s already a socket, just ensure it’s connected.
+    // If there's already a socket, just ensure it's connected.
     if (this.socket) {
       if (!this.socket.connected) {
         this.socket.connect();

@@ -115,6 +115,10 @@ class GlobalStateManager {
             
             const loaded = Load(irData);
             if (loaded) {
+                // Set the loaded IR as root first, then update component name
+                this.history.clear()
+                this.setRoot(loaded);
+                
                 // Update componentName with the actual canvas name from the database
                 // We need to fetch the canvas name from the backend
                 try {
@@ -138,9 +142,6 @@ class GlobalStateManager {
                 } catch (nameError) {
                   console.warn('Could not fetch canvas name:', nameError);
                 }
-                
-                this.history.clear()
-                this.setRoot(loaded);
             }
         }}
     catch (error) {

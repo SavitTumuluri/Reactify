@@ -136,43 +136,12 @@ export default function EditorPage() {
   }, [handleCapturePreview]);
 
 
-  // Update component name when canvasId changes (for new canvases)
+  // Update canvas name state when IR component name changes
   useEffect(() => {
-    if (canvasId) {
-      // Fetch canvas name from backend
-      const fetchCanvasName = async () => {
-        try {
-          const accessToken = authService.getAccessToken();
-          if (!accessToken) {
-            return;
-          }
-          
-          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/canvas/${canvasId}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          });
-          
-          if (response.ok) {
-            const canvasData = await response.json();
-            
-            if (canvasData.canvas && canvasData.canvas.name) {
-              setCanvasName(canvasData.canvas.name);
-              // Only update IR componentName if it's different to avoid unnecessary autosave triggers
-              if (ir?.get?.('componentName') !== canvasData.canvas.name) {
-                ir.set('componentName', canvasData.canvas.name);
-              }
-            }
-          }
-        } catch (error) {
-          console.warn('Could not fetch canvas name:', error);
-        }
-      };
-      
-      // Add a small delay to ensure the canvas is fully saved
-      setTimeout(fetchCanvasName, 1000);
+    if (ir?.get?.('componentName')) {
+      setCanvasName(ir.get('componentName'));
     }
-  }, [canvasId, ir]);
+  }, [ir]);
 
 
   // ---- UI state ----
