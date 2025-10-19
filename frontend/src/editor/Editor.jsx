@@ -12,6 +12,8 @@ import { IRText } from "./components/NewEditableText";
 import { IRAIComponent } from "./components/AIComponent";
 import { generateAISVG, rewriteIRWithAgent } from "../lib/aiService";
 import AgentPanel from "./components/AgentPanel";
+import AIPromptModal from "./components/AIPromptModal";
+import AIComponentSelector from "./components/AIComponentSelector";
 import StateMan from "./state/GlobalStateManager";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
@@ -106,6 +108,9 @@ export default function EditorPage() {
   const [agentOpen, setAgentOpen] = useState(false);
   const [agentBusy, setAgentBusy] = useState(false);
   const [agentMsgs, setAgentMsgs] = useState([]);
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
+  const [pendingAiComponent, setPendingAiComponent] = useState(null);
+  const [aiSelectorOpen, setAiSelectorOpen] = useState(false);
 
   // ---- Pan/Zoom ----
   const {
@@ -137,32 +142,9 @@ export default function EditorPage() {
         const rect = new IRRect(ir);
         elem = new IRText(rect);
       } else if (type === "aiComponent") {
-        const rectStyles = {
-          backgroundColor: "transparent",
-          borderStyle: "none",
-          borderWidth: "0px",
-          borderColor: "transparent",
-          boxShadow: "none",
-          overflow: "visible",
-        };
-        const rect = selected instanceof IRRect ? selected : new IRRect(ir, { styles: rectStyles });
-        if (!(selected instanceof IRRect)) {
-          rect.set?.("styles", { ...(rect.get?.("styles") ?? {}), ...rectStyles });
-        }
-        const ai = new IRAIComponent(rect, { title: "Generating…", loading: true });
-        elem = ai;
-        const description =
-          window.prompt("Describe what to draw (e.g., 'star', 'make a circle')", "star") || "star";
-        try {
-          const svg = await generateAISVG(description);
-          ai.set("code", svg);
-          ai.set("title", description);
-          ai.set("loading", false);
-        } catch (e) {
-          ai.set("error", e?.message || String(e));
-          ai.set("loading", false);
-        }
-        setSelected(rect);
+        // Open the AI component selector instead of directly creating
+        setAiSelectorOpen(true);
+        return; // Don't create element yet, wait for selector
       }
 
       if (elem) {
@@ -231,6 +213,57 @@ export default function EditorPage() {
       setAgentBusy(false);
     }
   }, []);
+
+  const handleAiPromptSubmit = useCallback(async (description) => {
+    if (!pendingAiComponent) return;
+    
+    setAiPromptOpen(false);
+    
+    try {
+      const svg = await generateAISVG(description);
+      pendingAiComponent.set("code", svg);
+      pendingAiComponent.set("title", description);
+      pendingAiComponent.set("loading", false);
+    } catch (e) {
+      pendingAiComponent.set("error", e?.message || String(e));
+      pendingAiComponent.set("loading", false);
+    } finally {
+      setPendingAiComponent(null);
+    }
+  }, [pendingAiComponent]);
+
+  const handleAiComponentSelect = useCallback(async (type, description) => {
+    setAiSelectorOpen(false);
+    
+    const rectStyles = {
+      backgroundColor: "transparent",
+      borderStyle: "none",
+      borderWidth: "0px",
+      borderColor: "transparent",
+      boxShadow: "none",
+      overflow: "visible",
+    };
+    const rect = selected instanceof IRRect ? selected : new IRRect(ir, { styles: rectStyles });
+    if (!(selected instanceof IRRect)) {
+      rect.set?.("styles", { ...(rect.get?.("styles") ?? {}), ...rectStyles });
+    }
+    const ai = new IRAIComponent(rect, { title: "Generating…", loading: true });
+    
+    // Add to history and select
+    history.pushUndoCreate(ai, ai.parent, ai.parent.children.length - 1);
+    setSelected(rect);
+    ir.forceReRender?.();
+    
+    try {
+      const svg = await generateAISVG(description);
+      ai.set("code", svg);
+      ai.set("title", description);
+      ai.set("loading", false);
+    } catch (e) {
+      ai.set("error", e?.message || String(e));
+      ai.set("loading", false);
+    }
+  }, [ir, selected, history]);
 
   // ---- Delete selected ----
   const deleteSelectedElement = useCallback(() => {
@@ -449,6 +482,21 @@ export default function EditorPage() {
             open={isGalleryOpen}
             onClose={() => setIsGalleryOpen(false)}
             onSelect={onSelectMedia}
+          />
+
+          <AIPromptModal
+            isOpen={aiPromptOpen}
+            onClose={() => {
+              setAiPromptOpen(false);
+              setPendingAiComponent(null);
+            }}
+            onSubmit={handleAiPromptSubmit}
+          />
+
+          <AIComponentSelector
+            isOpen={aiSelectorOpen}
+            onClose={() => setAiSelectorOpen(false)}
+            onSelect={handleAiComponentSelect}
           />
         </div>
       </div>

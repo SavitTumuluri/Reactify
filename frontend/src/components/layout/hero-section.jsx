@@ -165,7 +165,7 @@ export default function HeroSection() {
           </div>
         </section>
         
-        {/* <NewComponent /> */}
+        <NewComponent />
       
 
       </main>

@@ -12,12 +12,12 @@ export default function AgentPanel({ onSubmit, messages, busy, onClose }) {
   };
 
   return (
-    <div className="absolute left-4 bottom-20 z-20 w-[420px] max-w-[90vw] rounded-lg border border-gray-700 bg-gray-900/95 backdrop-blur-sm shadow-xl">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/70">
+    <div className="absolute left-4 bottom-20 z-20 w-[420px] max-w-[90vw] max-h-[80vh] rounded-lg border border-gray-700 bg-gray-900/95 backdrop-blur-sm shadow-xl flex flex-col">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/70 flex-shrink-0">
         <div className="text-sm font-semibold text-gray-200">Agent</div>
         <button className="text-gray-400 hover:text-white text-xs px-2 py-1" onClick={onClose}>Close</button>
       </div>
-      <div className="max-h-[320px] overflow-auto p-3 space-y-2">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
         {(messages || []).map((m, i) => (
           <div key={i} className={`text-sm ${m.role === "user" ? "text-gray-200" : "text-gray-300"}`}>
             <span className="uppercase text-[10px] mr-2 text-gray-500">{m.role}</span>
@@ -26,7 +26,7 @@ export default function AgentPanel({ onSubmit, messages, busy, onClose }) {
         ))}
         {busy && <div className="text-xs text-blue-400 animate-pulse">Thinking…</div>}
       </div>
-      <form onSubmit={submit} className="p-3 border-t border-gray-700/70">
+      <form onSubmit={submit} className="p-3 border-t border-gray-700/70 flex-shrink-0">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

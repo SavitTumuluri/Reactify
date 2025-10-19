@@ -32,7 +32,10 @@ export class IRRect extends IRView {
     const borderColor     = styles.borderColor ?? "transparent";
     const borderRadius    = styles.borderRadius ?? "12px";
     const boxShadow       = styles.boxShadow ?? "0 6px 16px rgba(0,0,0,.06)";
-    const overflow        = styles.overflow ?? "hidden";
+    
+    // Check if this rectangle contains an image - if so, use visible overflow
+    const hasImage = this.children.some(child => child.constructor.name === 'IRImage');
+    const overflow = hasImage ? "visible" : (styles.overflow ?? "hidden");
 
     const body = this.children.map((c) => c.toReact()).join("\n");
 

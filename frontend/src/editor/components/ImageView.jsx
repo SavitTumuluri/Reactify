@@ -12,7 +12,7 @@ export default function ImageView({ ir }) {
   useEffect(() => {
     const existing = ir.get?.("styles") ?? {};
     const defaults = {
-      objectFit: "cover",
+      objectFit: "contain",
       objectPosition: "50% 50%",
       opacity: 1,
     };
@@ -39,7 +39,11 @@ export default function ImageView({ ir }) {
         objectFit,
         objectPosition,
         opacity,
-        pointerEvents: "none", // allow parent DragResize to handle interactions
+        pointerEvents: "none",
+        position: "absolute",
+        top: 0,
+        left: 0,
+        zIndex: 1,
       }}
     />
   );

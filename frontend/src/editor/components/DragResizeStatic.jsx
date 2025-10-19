@@ -92,7 +92,8 @@ export default function DragResizeStatic({
     background: readStyle("backgroundColor", "#ffffff"),
     border: `${readStyle("borderWidth", "1px")} ${readStyle("borderStyle", "solid")} ${readStyle("borderColor", "#e5e7eb")}`,
     boxShadow: readStyle("boxShadow", "0 6px 16px rgba(0,0,0,.06)"),
-    overflow: readStyle("overflow", "hidden"),
+    overflow: readStyle("overflow", "visible"), // Changed from "hidden" to "visible" to prevent image clipping
+    position: "relative", // Ensure proper positioning context
     ...(isTriangle && { clipPath: readStyle("clipPath", "polygon(50% 0%, 0% 100%, 100% 100%)") }),
     ...(isStar && { clipPath: readStyle("clipPath", "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)") }),
   };

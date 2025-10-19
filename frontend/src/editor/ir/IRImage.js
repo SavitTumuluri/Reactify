@@ -6,7 +6,7 @@ const history = getStateManager().history;
 export class IRImage extends IRView {
   constructor(parent, inputs = {}) {
     const defaultStyles = {
-      objectFit: "cover",
+      objectFit: "contain",
       objectPosition: "50% 50%",
       opacity: 1,
     };
@@ -27,14 +27,23 @@ export class IRImage extends IRView {
     const objectPosition = s.objectPosition ?? "50% 50%";
     const opacity = typeof s.opacity === "number" ? s.opacity : 1;
 
+    // Images are children of IRRect, so they don't need their own positioning
+    // Just return the img tag - the parent IRRect will handle positioning
     return `<img src={${src}} alt={${alt}} style={{
-  width: "100%",
-  height: "100%",
-  display: "block",
-  objectFit: "${objectFit}",
-  objectPosition: "${objectPosition}",
-  opacity: ${opacity}
-}} />`;
+      width: "100%",
+      height: "100%",
+      maxWidth: "100%",
+      maxHeight: "100%",
+      display: "block",
+      objectFit: "${objectFit}",
+      objectPosition: "${objectPosition}",
+      opacity: ${opacity},
+      position: "absolute",
+      top: 0,
+      left: 0,
+      zIndex: 1,
+      boxSizing: "border-box"
+    }} />`;
   }
 }
 

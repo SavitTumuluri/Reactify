@@ -53,9 +53,15 @@ export class IRCanvasContainer extends IRRoot {
     const styles = this.get("styles") ?? {};
     const canvasBackground = styles.canvasBackground ?? styles.backgroundColor ?? "#ffffff";
 
+    // Sanitize component name to be a valid JavaScript identifier
+    const sanitizedName = this._data.componentName
+      .replace(/[^a-zA-Z0-9_$]/g, '') // Remove invalid characters
+      .replace(/^[0-9]/, '_$&') // Ensure it doesn't start with a number
+      || 'Canvas'; // Fallback if name becomes empty
+
     return `
 ${importString}
-export const ${this._data.componentName} = (props) => {
+export const ${sanitizedName} = (props) => {
   ${effectString}
   const canvasBackground = "${canvasBackground}";
   return <GraphicBox canvasBackground={canvasBackground}>${divString}</GraphicBox>
@@ -161,7 +167,7 @@ const CanvasContainer = forwardRef(function CanvasContainer(
     borderRadius: s.borderRadius ?? "16px",
     boxShadow: s.boxShadow ?? "0 12px 28px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.06)",
     border: s.border ?? "1px solid rgba(0,0,0,.06)",
-    overflow: s.overflow ?? "hidden",
+    overflow: s.overflow ?? "visible", // Changed from "hidden" to "visible" to prevent image clipping
     ...style, // allow parent to override if desired
   };
 

@@ -15,13 +15,20 @@ export class IRAIComponent extends IRView {
   toComponent() { return AIComponentView; }
   toReact() {
     // For export: just inline whatever code we captured.
-    // If it’s SVG: wrap in a div.
-    // If it’s React JSX (DragResizeStatic children), emit as-is.
+    // If it's SVG: wrap in a properly constrained div.
+    // If it's React JSX (DragResizeStatic children), emit as-is.
     const code = this.get("code") ?? "";
     const isSVG = /<svg[\s\S]*<\/svg>/i.test(code);
     if (isSVG) {
       const safe = JSON.stringify(code);
-      return `<div dangerouslySetInnerHTML={{__html: ${safe}}} />`;
+      return `<div style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "visible"
+      }} dangerouslySetInnerHTML={{__html: ${safe}}} />`;
     }
     // Assume it's valid JSX fragment (DragResizeStatic tree)
     return code;
@@ -51,14 +58,19 @@ export default function AIComponentView({ ir }) {
     let w = rawW ? parseFloat(String(rawW).replace(/[^0-9.]/g, "")) : NaN;
     let h = rawH ? parseFloat(String(rawH).replace(/[^0-9.]/g, "")) : NaN;
 
-    // Make responsive
+    // Make responsive and properly sized to fit container
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
     if (!svg.getAttribute("preserveAspectRatio")) {
       svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     }
-    // Ensure display block to avoid inline gaps
+    // Ensure display block and proper sizing that fits within bounds
     svg.style.display = "block";
+    svg.style.maxWidth = "100%";
+    svg.style.maxHeight = "100%";
+    svg.style.width = "auto";
+    svg.style.height = "auto";
+    svg.style.objectFit = "contain";
 
     // If viewBox missing, derive from numeric width/height or fallback to bbox
     if (!svg.getAttribute("viewBox")) {
@@ -78,7 +90,7 @@ export default function AIComponentView({ ir }) {
   }, [code]);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       {loading && (
         <div className="w-full h-full flex items-center justify-center">
           <div className="flex flex-col items-center gap-4 p-4">
@@ -99,7 +111,18 @@ export default function AIComponentView({ ir }) {
         </div>
       )}
       {!loading && !error && code && /<svg[\s\S]*<\/svg>/i.test(code) && (
-        <div ref={containerRef} className="w-full h-full" />
+        <div 
+          ref={containerRef} 
+          className="w-full h-full flex items-center justify-center"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            overflow: "visible"
+          }}
+        />
       )}
       {!loading && !error && code && !/<svg[\s\S]*<\/svg>/i.test(code) && (
         // You could live-evaluate JSX with a sandbox, but simplest is preview-only text.
