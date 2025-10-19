@@ -58,30 +58,30 @@ const Notification = ({
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ opacity: 0, y: -50, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -50, scale: 0.95 }}
+          initial={{ opacity: 0, x: 100, scale: 0.95 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 100, scale: 0.95 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className={`relative max-w-sm w-full ${getBackgroundColor()} border rounded-lg shadow-lg backdrop-blur-sm`}
+          className={`relative w-full max-w-sm ${getBackgroundColor()} border rounded-lg shadow-lg backdrop-blur-sm`}
         >
           <div className="p-4">
-            <div className="flex items-start">
+            <div className="flex items-start gap-3">
               <div className="flex-shrink-0">
                 {getIcon()}
               </div>
-              <div className="ml-3 w-0 flex-1">
+              <div className="flex-1 min-w-0">
                 {title && (
-                  <p className="text-sm font-medium text-white">
+                  <p className="text-sm font-medium text-white truncate">
                     {title}
                   </p>
                 )}
-                <p className={`text-sm ${title ? 'text-gray-300' : 'text-white'}`}>
+                <p className={`text-sm ${title ? 'text-gray-300' : 'text-white'} break-words`}>
                   {message}
                 </p>
               </div>
-              <div className="ml-4 flex-shrink-0 flex">
+              <div className="flex-shrink-0">
                 <button
-                  className="inline-flex text-gray-400 hover:text-white focus:outline-none focus:text-white transition-colors"
+                  className="inline-flex text-gray-400 hover:text-white focus:outline-none focus:text-white transition-colors p-1 rounded"
                   onClick={handleClose}
                 >
                   <XMarkIcon className="h-4 w-4" />

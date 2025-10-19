@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Notification positioning fixes */
+.notification-container {
+  position: fixed !important;
+  top: 1rem !important;
+  right: 1rem !important;
+  z-index: 9999 !important;
+  max-width: 24rem !important;
+  width: 100% !important;
+  pointer-events: none !important;
+}
+
+.notification-item {
+  pointer-events: auto !important;
+  margin-bottom: 0.5rem !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
 /* Custom placeholder styling for editable text */
 input::placeholder {
   color: var(--placeholder-color, #6b7280);

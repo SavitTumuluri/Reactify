@@ -11,10 +11,26 @@ import dotenv from 'dotenv';
 import { docClient } from '../../server.js';
 import { error } from 'console';
 
+// Serialization function (same as in canvaController)
+function serializeCanvasDataForStorage(canvasData) {
+  try {
+    return JSON.stringify(canvasData);
+  } catch {
+    return JSON.stringify({ error: 'Failed to serialize canvasData' });
+  }
+}
+
 dotenv.config();
 
 export class templateController{
     static tableName = 'public-canva';
+
+    // Generate S3 preview URL for templates
+    static generatePreviewUrl(canvaId) {
+        const bucket = process.env.S3_BUCKET || 'reactify-canvas-previews';
+        const region = process.env.AWS_REGION || 'us-east-1';
+        return `https://${bucket}.s3.${region}.amazonaws.com/canvas-previews/templates/${canvaId}.png`;
+    }
 
     static async getAllTemplateCanvas(req, res) {
         try {
@@ -28,17 +44,22 @@ export class templateController{
             // Sort by likes (most popular first)
             const sortedTemplates = items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
 
-            console.log('📋 Public templates:', JSON.stringify({ 
-                templates: sortedTemplates, 
-                count: sortedTemplates.length 
-            }, null, 2));
+            // Add S3 preview URLs to each template
+            const templatesWithPreviews = sortedTemplates.map(template => {
+                const previewUrl = template.previewUrl || templateController.generatePreviewUrl(template.canvaId);
+                return {
+                    ...template,
+                    previewUrl,
+                    s3: previewUrl // Add data-s3 attribute equivalent
+                };
+            });
 
+   
             res.json({
-                templates: sortedTemplates,
-                count: sortedTemplates.length
+                templates: templatesWithPreviews,
+                count: templatesWithPreviews.length
             });
         } catch (error) {
-            console.error('Error getting public templates:', error);
             res.status(500).json({ error: 'Failed to get public templates' });
         }
     }
@@ -48,7 +69,6 @@ export class templateController{
             const { canvaId } = req.params; // Template canvaId
             const auth0Id = req.user.sub; // User who's copying
 
-            console.log('📋 Copying template:', canvaId, 'for user:', auth0Id);
 
             // 1. Get the template from public-canva table
             const getParams = {
@@ -67,11 +87,57 @@ export class templateController{
             // 2. Create a new canvas for the user with the template data
             const newCanvasId = `canvas-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             
+            // Parse and preserve the original IR data structure
+            let canvasData = {};
+            try {
+                // Parse the template canvaData (note: it's canvaData, not canvasData)
+                let parsedTemplateData = {};
+                if (typeof template.canvaData === 'string') {
+                    parsedTemplateData = JSON.parse(template.canvaData);
+                } else if (template.canvaData && typeof template.canvaData === 'object') {
+                    parsedTemplateData = template.canvaData;
+                }
+                
+
+                
+                // Direct copy - just use the parsed data as-is
+                if (parsedTemplateData && Object.keys(parsedTemplateData).length > 0) {
+                    canvasData = JSON.parse(JSON.stringify(parsedTemplateData)); // Deep clone everything
+                    console.log('Using parsed template data directly');
+                } else {
+                    console.log('No valid template data found, using fallback');
+                    canvasData = {
+                        ir: {
+                            name: 'IRCanvasContainer',
+                            _data: {
+                                size: { w: 1200, h: 800 },
+                                styles: { canvasBackground: '#ffffff' }
+                            },
+                            children: []
+                        }
+                    };
+                }
+                
+                
+            } catch (error) {
+                console.error('Error parsing template canvaData:', error);
+                // Fallback if parsing fails
+                canvasData = {
+                    ir: {
+                        name: 'IRCanvasContainer',
+                        _data: {
+                            size: { w: 1200, h: 800 },
+                            styles: { canvasBackground: '#ffffff' }
+                        },
+                        children: []
+                    }
+                };
+            }
             const newCanvas = {
                 canvasId: newCanvasId,
                 userId: auth0Id,
-                name: `Copy of ${template.name}`,
-                canvasData: template.canvasData, // Copy the entire canvas data (ir + bo)
+                name: template.name,
+                canvasData: serializeCanvasDataForStorage(canvasData), // Use proper serialization
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 timestamp: new Date().toISOString()
@@ -99,14 +165,11 @@ export class templateController{
 
             await docClient.send(new UpdateCommand(updateParams));
 
-            console.log('✅ Template copied successfully:', newCanvasId);
-
             res.json({
                 message: 'Template copied successfully',
                 canvas: newCanvas
             });
         } catch (error) {
-            console.error('❌ Error copying template:', error);
             res.status(500).json({ error: 'Failed to copy template', details: error.message });
         }
     }
@@ -115,7 +178,6 @@ export class templateController{
         try {
             const { canvaId } = req.params;
 
-            console.log('👍 Liking template:', canvaId);
 
             const updateParams = {
                 TableName: templateController.tableName,
@@ -134,14 +196,11 @@ export class templateController{
                 return res.status(404).json({ error: 'Template not found' });
             }
 
-            console.log('✅ Template liked successfully:', canvaId);
-
             res.json({
                 message: 'Template liked successfully',
                 likes: result.Attributes.likes || 0
             });
         } catch (error) {
-            console.error('❌ Error liking template:', error);
             res.status(500).json({ error: 'Failed to like template', details: error.message });
         }
     }

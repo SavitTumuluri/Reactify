@@ -62,13 +62,14 @@ export const NotificationProvider = ({ children }) => {
       {children}
       
       {/* Notification Container */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      <div className="notification-container">
         {notifications.map((notification) => (
-          <Notification
-            key={notification.id}
-            {...notification}
-            onClose={removeNotification}
-          />
+          <div key={notification.id} className="notification-item">
+            <Notification
+              {...notification}
+              onClose={removeNotification}
+            />
+          </div>
         ))}
       </div>
     </NotificationContext.Provider>

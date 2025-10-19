@@ -191,18 +191,19 @@ const Templates = ({ onItemClick }) => {
                 >
                   
                   <div className="aspect-video bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg mb-3 flex items-center justify-center text-4xl relative overflow-hidden">
-                    {template.previewImage ? (
+                    {(template.previewImage || template.previewUrl || template.s3) ? (
                       <img 
-                        src={template.previewImage} 
+                        src={template.previewImage || template.previewUrl || template.s3} 
                         alt={template.name}
                         className="w-full h-full object-contain"
+                        data-s3={template.s3 || template.previewUrl}
                         onError={(e) => {
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'flex';
                         }}
                       />
                     ) : null}
-                    <div className={`absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center ${template.previewImage ? 'hidden' : 'flex'}`}>
+                    <div className={`absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center ${(template.previewImage || template.previewUrl || template.s3) ? 'hidden' : 'flex'}`}>
                       <span className="relative z-10">🎨</span>
                     </div>
                   </div>
