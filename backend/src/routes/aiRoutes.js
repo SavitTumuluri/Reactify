@@ -115,7 +115,10 @@ router.post("/ai/svg", async (req, res) => {
 
   Rules:
   - Produce ONE <svg ...>...</svg> element only.
-  - Include width="512" height="512" viewBox="0 0 512 512".
+  - Include width="100%" height="100%" viewBox="0 0 128 128".
+  - Add style="display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; overflow: hidden;"
+  - Scale all coordinates and sizes to fit within 0-128 range (divide by 4 from 512x512).
+  - Use preserveAspectRatio="xMidYMid meet" to maintain aspect ratio.
   - No external assets or fonts. Simple shapes/fills/strokes OK.
   - Keep it visually clean; no scripts, no animations.
   `;

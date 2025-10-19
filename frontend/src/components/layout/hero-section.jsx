@@ -6,7 +6,7 @@ import { TextEffect } from '@/components/ui/text-effect'
 import { AnimatedGroup } from '@/components/ui/animated-group'
 import { HeroHeader } from './header'
 import { useAuth } from '../../lib/AuthContext'
-import { NewComponent } from './NewComponent'
+import ReactifyHomepageTemplate from './NewComponent'
 
 
 const transitionVariants = {
@@ -164,8 +164,8 @@ export default function HeroSection() {
             </AnimatedGroup>
           </div>
         </section>
+        <ReactifyHomepageTemplate />
         
-        {/* <NewComponent /> */}
       
 
       </main>

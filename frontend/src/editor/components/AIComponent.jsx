@@ -27,7 +27,9 @@ export class IRAIComponent extends IRView {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        overflow: "visible"
+        overflow: "hidden",
+        transform: "scale(0.7)",
+        transformOrigin: "center center"
       }} dangerouslySetInnerHTML={{__html: ${safe}}} />`;
     }
     // Assume it's valid JSX fragment (DragResizeStatic tree)
@@ -58,19 +60,35 @@ export default function AIComponentView({ ir }) {
     let w = rawW ? parseFloat(String(rawW).replace(/[^0-9.]/g, "")) : NaN;
     let h = rawH ? parseFloat(String(rawH).replace(/[^0-9.]/g, "")) : NaN;
 
-    // Make responsive and properly sized to fit container
+    // Ensure SVG is properly sized for container
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
     if (!svg.getAttribute("preserveAspectRatio")) {
       svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     }
-    // Ensure display block and proper sizing that fits within bounds
+    
+    // Apply comprehensive styling to ensure proper scaling
     svg.style.display = "block";
+    svg.style.width = "100%";
+    svg.style.height = "100%";
     svg.style.maxWidth = "100%";
     svg.style.maxHeight = "100%";
-    svg.style.width = "auto";
-    svg.style.height = "auto";
     svg.style.objectFit = "contain";
+    svg.style.overflow = "hidden";
+    svg.style.minWidth = "0";
+    svg.style.minHeight = "0";
+    svg.style.boxSizing = "border-box";
+    
+    // Force the SVG to respect container bounds
+    const container = host.parentElement;
+    if (container) {
+      const containerRect = container.getBoundingClientRect();
+      const maxSize = Math.min(containerRect.width, containerRect.height);
+      if (maxSize > 0) {
+        svg.style.maxWidth = `${maxSize}px`;
+        svg.style.maxHeight = `${maxSize}px`;
+      }
+    }
 
     // If viewBox missing, derive from numeric width/height or fallback to bbox
     if (!svg.getAttribute("viewBox")) {
