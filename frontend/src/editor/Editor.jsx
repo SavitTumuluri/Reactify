@@ -10,6 +10,9 @@ import ImageGallery from "./components/ImageGallery";
 import { Save, Load } from "./state/Save";
 import { IRText } from "./components/NewEditableText";
 import { IRAIComponent } from "./components/AIComponent";
+// Import all components to ensure they're registered
+import "./components/ImageView";
+import "./components/VideoView";
 import { generateAISVG, rewriteIRWithAgent } from "../lib/aiService";
 import AgentPanel from "./components/AgentPanel";
 import AIPromptModal from "./components/AIPromptModal";

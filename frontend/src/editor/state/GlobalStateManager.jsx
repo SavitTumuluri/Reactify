@@ -99,8 +99,21 @@ class GlobalStateManager {
         const dataString = await loadFromDB(userId, canvasId);
         if (dataString) {
             const parsed = dataString;
-            const maybeIR = parsed?.ir ?? parsed;
-            const loaded = Load(maybeIR);
+            
+            // Handle different data structures more robustly
+            let irData = null;
+            if (parsed?.ir) {
+                // Standard structure: { ir: {...} }
+                irData = parsed.ir;
+            } else if (parsed?.name === 'IRCanvasContainer') {
+                // Direct IR structure
+                irData = parsed;
+            } else if (parsed && typeof parsed === 'object') {
+                // Try to find IR data in nested structure
+                irData = parsed;
+            }
+            
+            const loaded = Load(irData);
             if (loaded) {
                 // Update componentName with the actual canvas name from the database
                 // We need to fetch the canvas name from the backend
