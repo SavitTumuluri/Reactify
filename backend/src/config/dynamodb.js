@@ -6,6 +6,7 @@ import {
   GetCommand,
   DeleteCommand,
   QueryCommand,
+  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import dotenv from 'dotenv';
 
@@ -78,21 +79,48 @@ export class CanvasDataService {
     try {
       const now = new Date().toISOString();
 
-      const params = {
-        TableName: this.tableName,
-        Item: {
-          // IMPORTANT: match table keys exactly
-          userId: userId,
-          canvasId: canvasId,
-          // Store as JSON string; we'll parse on reads
-          canvasData: serializeCanvasDataForStorage(canvasData),
-          name: canvasName || `Canvas ${canvasId.slice(-8)}`,
-          timestamp: now,
-          updatedAt: now,
-        },
-      };
+      // Check if canvas exists to determine whether to use Put or Update
+      let existingCanvas = null;
+      try {
+        existingCanvas = await this.getCanvasData(userId, canvasId);
+      } catch {
+        // Canvas doesn't exist yet
+      }
 
-      await docClient.send(new PutCommand(params));
+      if (existingCanvas) {
+        // Canvas exists - use UpdateCommand to only update canvasData and updatedAt
+        // This preserves the existing name and other fields
+        const params = {
+          TableName: this.tableName,
+          Key: {
+            userId: userId,
+            canvasId: canvasId,
+          },
+          UpdateExpression: 'SET canvasData = :data, updatedAt = :now',
+          ExpressionAttributeValues: {
+            ':data': serializeCanvasDataForStorage(canvasData),
+            ':now': now,
+          },
+        };
+
+        await docClient.send(new UpdateCommand(params));
+      } else {
+        // Canvas doesn't exist - use PutCommand with default name
+        const params = {
+          TableName: this.tableName,
+          Item: {
+            userId: userId,
+            canvasId: canvasId,
+            canvasData: serializeCanvasDataForStorage(canvasData),
+            name: canvasName || `Canvas ${canvasId.slice(-8)}`,
+            timestamp: now,
+            updatedAt: now,
+          },
+        };
+
+        await docClient.send(new PutCommand(params));
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Error saving canvas data:', error);

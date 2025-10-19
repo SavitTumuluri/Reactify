@@ -48,7 +48,6 @@ export default function DragResize({ ir, bounds, onElementSelect, isSelected, el
   const className = "";
 
   const checkpoint = () => {
-    console.log("Detected a reasonable checkpoint: This would save state here!");
     try { onCheckpoint?.(); } catch {}
   };
 

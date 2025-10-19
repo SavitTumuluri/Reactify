@@ -7,6 +7,7 @@ const router = express.Router();
 // Public route - NO AUTH required
 router.get('/', templateController.getAllTemplateCanvas);
 router.post('/:canvaId/copy', verifyToken, templateController.copyTemplateToCanvas);
+router.post('/:canvaId/like', templateController.likeTemplate);
 
 
 export default router;

@@ -64,12 +64,9 @@ const Templates = ({ onItemClick }) => {
   const handleCopy = async (e, template) => {
     e.stopPropagation()
     
-    console.log('🔄 Starting copy for template:', template)
-    
     try {
       // Get token inside the function
       const token = authService.getAccessToken()
-      console.log('🔑 Token found:', !!token)
       
       if (!token) {
         alert('Please log in to copy templates')
@@ -77,7 +74,6 @@ const Templates = ({ onItemClick }) => {
       }
       
       const url = `http://localhost:5006/api/templates/${template.canvaId}/copy`
-      console.log('📡 Calling:', url)
       
       const response = await fetch(url, {
         method: 'POST',
@@ -87,8 +83,6 @@ const Templates = ({ onItemClick }) => {
         }
       })
 
-      console.log('📥 Response status:', response.status)
-
       if (!response.ok) {
         const error = await response.json()
         console.error('❌ Error:', error)
@@ -96,12 +90,11 @@ const Templates = ({ onItemClick }) => {
       }
 
       const data = await response.json()
-      console.log('✅ Success:', data)
       
       alert('Template copied to your canvases!')
       
       // Redirect to edit the new canvas
-      window.location.href = `/canvas/${data.canvas.canvasId}`
+      window.location.href = `/editor/${data.canvas.canvasId}`
       
     } catch (err) {
       console.error('❌ Error copying template:', err)

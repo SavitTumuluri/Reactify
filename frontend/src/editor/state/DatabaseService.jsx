@@ -30,7 +30,7 @@ export async function saveToDB(data, userId, canvasId, canvasName = null) {
     );
 
     if (success) {
-      console.log('saveToDB: Data saved successfully', { userId, canvasId });
+      // Data saved successfully
     } else {
       console.error('saveToDB: WebSocket not connected');
     }
@@ -70,7 +70,6 @@ export async function loadFromDB(userId, canvasId) {
 
           // Return IR object when available
           const irObject = parsed?.ir ?? parsed ?? null;
-          console.log('loadFromDB: Data loaded successfully', { userId, canvasId });
           resolve(irObject);
         } catch (error) {
           console.error('loadFromDB: Error parsing data', error);
@@ -96,7 +95,6 @@ export async function loadFromDB(userId, canvasId) {
     websocketService.onCanvasDataError(handleCanvasError);
 
     // Request canvas data from backend
-    console.log('loadFromDB: Requesting data', { userId, canvasId });
     websocketService.getCanvasData(userId, canvasId);
   });
 }

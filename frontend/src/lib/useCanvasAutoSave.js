@@ -97,17 +97,18 @@ export const useCanvasAutoSave = (
     };
   }, [canvasData, userId, canvasId, enabled, debouncedSave]);
 
-  // ---- One-time save when the name first becomes available/changes ----
-  // Ensures the *first* save persists the display name on the backend
+
   useEffect(() => {
     if (!enabled || !isConnected || !userId || !canvasId) return;
 
-    // If we just received a name (or it changed) and it differs from what we've recorded,
-    // push a save so the backend stores it (using if_not_exists(name, :nm) server-side).
-    if (canvasName && canvasName !== lastSavedNameRef.current) {
-      performSave();
+ 
+    if (canvasName && canvasName !== lastSavedNameRef.current && canvasData) {
+      const currentDataString = JSON.stringify(canvasData);
+      if (currentDataString !== lastSavedDataRef.current) {
+        performSave();
+      }
     }
-  }, [canvasName, enabled, isConnected, userId, canvasId, performSave]);
+  }, [canvasName, enabled, isConnected, userId, canvasId, canvasData, performSave]);
 
   // ---- Manual save (e.g., Ctrl+S or button) ----
   const manualSave = useCallback(() => {

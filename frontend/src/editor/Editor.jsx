@@ -10,13 +10,13 @@ import ImageGallery from "./components/ImageGallery";
 import { Save, Load } from "./state/Save";
 import { IRText } from "./components/NewEditableText";
 import { IRAIComponent } from "./components/AIComponent";
-import AIPromptModal from "./components/AIPromptModal";
 import { generateAISVG, rewriteIRWithAgent } from "../lib/aiService";
 import AgentPanel from "./components/AgentPanel";
 import StateMan from "./state/GlobalStateManager";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import { useCanvasAutoSave } from "../lib/useCanvasAutoSave";
+import { authService } from "../lib/authService";
 
 import usePanZoom from "./hooks/usePanZoom";
 import useMediaSelection from "./hooks/useMediaSelection";
@@ -40,14 +40,17 @@ export default function EditorPage() {
   const [ir, forceSetIR] = useState(() => new IRCanvasContainer());
   const [selected, setSelected] = useState(null);
   const [irVersion, setIrVersion] = useState(0);
+  
+  // Separate state for canvas name to avoid triggering autosave
+  const [canvasName, setCanvasName] = useState(null);
 
   // Keep GlobalStateManager wired to IR; bump version when it swaps
   const setIR = stateman.init(ir, forceSetIR,setIrVersion);
 
   // ---- Autosave + checkpoint logs ----
-  const canvasName = ir?.get?.("componentName") || null;
   const canvasDataPayload = { ir: Save(ir) };
-  const { manualSave } = useCanvasAutoSave(userId, canvasId, canvasDataPayload, canvasName, {
+  // Don't send canvasName during autosave - let backend preserve existing name
+  const { manualSave } = useCanvasAutoSave(userId, canvasId, canvasDataPayload, null, {
     debounceDelay: 800,
   });
 
@@ -59,13 +62,50 @@ export default function EditorPage() {
     return () => { stateman.history.onChange = null; };
   }, []);
 
+  // Update component name when canvasId changes (for new canvases)
+  useEffect(() => {
+    if (canvasId) {
+      // Fetch canvas name from backend
+      const fetchCanvasName = async () => {
+        try {
+          const accessToken = authService.getAccessToken();
+          if (!accessToken) {
+            return;
+          }
+          
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5006'}/api/canvas/${canvasId}`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          });
+          
+          if (response.ok) {
+            const canvasData = await response.json();
+            
+            if (canvasData.canvas && canvasData.canvas.name) {
+              setCanvasName(canvasData.canvas.name);
+              // Only update IR componentName if it's different to avoid unnecessary autosave triggers
+              if (ir?.get?.('componentName') !== canvasData.canvas.name) {
+                ir.set('componentName', canvasData.canvas.name);
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Could not fetch canvas name:', error);
+        }
+      };
+      
+      // Add a small delay to ensure the canvas is fully saved
+      setTimeout(fetchCanvasName, 1000);
+    }
+  }, [canvasId, ir]);
+
+
   // ---- UI state ----
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [agentBusy, setAgentBusy] = useState(false);
   const [agentMsgs, setAgentMsgs] = useState([]);
-  const [aiPromptOpen, setAIPromptOpen] = useState(false);
-  const aiRectRef = useRef(null);
 
   // ---- Pan/Zoom ----
   const {
@@ -111,8 +151,17 @@ export default function EditorPage() {
         }
         const ai = new IRAIComponent(rect, { title: "Generating…", loading: true });
         elem = ai;
-        aiRectRef.current = { rect, ai };
-        setAIPromptOpen(true);
+        const description =
+          window.prompt("Describe what to draw (e.g., 'star', 'make a circle')", "star") || "star";
+        try {
+          const svg = await generateAISVG(description);
+          ai.set("code", svg);
+          ai.set("title", description);
+          ai.set("loading", false);
+        } catch (e) {
+          ai.set("error", e?.message || String(e));
+          ai.set("loading", false);
+        }
         setSelected(rect);
       }
 
@@ -125,24 +174,6 @@ export default function EditorPage() {
     [ir, selected]
   );
 
-  const handleAIPromptSubmit = useCallback(async (description) => {
-    const ctx = aiRectRef.current;
-    setAIPromptOpen(false);
-    if (!ctx) return;
-    const { ai } = ctx;
-    try {
-      const svg = await generateAISVG(description);
-      ai.set("code", svg);
-      ai.set("title", description);
-      ai.set("loading", false);
-    } catch (e) {
-      ai.set("error", e?.message || String(e));
-      ai.set("loading", false);
-    } finally {
-      aiRectRef.current = null;
-    }
-  }, []);
-
   // Removed plan executor — we now exclusively use full IR rewrite
 
   const submitAgent = useCallback(async (text) => {
@@ -151,7 +182,6 @@ export default function EditorPage() {
     try {
       const state = Save(ir);
       const resp = await rewriteIRWithAgent(text, state);
-      try { console.log("[Agent] rewrite response", resp); } catch {}
       const { ir: newIr } = resp || {};
       if (newIr) {
         const sanitize = (node) => {
@@ -282,8 +312,6 @@ export default function EditorPage() {
         const baseName = (ir.get?.("componentName") || "Canvas").toString().replace(/[^\w\-]+/g, "_");
         const fileName = `${baseName}.png`;
 
-        console.log({width,height,scale})
-
         // Render the DOM node → PNG data URL at desired size/scale
         const dataUrl = await toPng(node, {
           cacheBust: true,
@@ -395,12 +423,6 @@ export default function EditorPage() {
                   onClose={() => setAgentOpen(false)}
                 />
               )}
-
-              <AIPromptModal
-                isOpen={aiPromptOpen}
-                onClose={() => { setAIPromptOpen(false); aiRectRef.current = null; }}
-                onSubmit={handleAIPromptSubmit}
-              />
 
               <div
                 id="canvas-viewport"

@@ -58,7 +58,6 @@ const Preview = () => {
       }
 
       const data = await response.json()
-      console.log('Canvas data received:', data)
 
       if (data.canvas && data.canvas.canvasData) {
         // Extract project name from canvas data
@@ -101,21 +100,16 @@ const Preview = () => {
   }, [canvasId, user])
 
   const handleFileSelect = (file) => {
-    console.log('File selected:', file)
-    console.log('Current readOnlyFile before:', readOnlyFile)
-    
     if (file.editable && !file.locked) {
       // Clear read-only file state when switching to editable file
       setReadOnlyFile(null)
     } else {
       // For read-only files, set the read-only file state
-      console.log('Setting read-only file:', file)
       setReadOnlyFile(file)
     }
   }
 
   const closeReadOnlyFile = () => {
-    console.log('Closing read-only file')
     setReadOnlyFile(null)
   }
 
@@ -232,10 +226,9 @@ const Preview = () => {
         />
 
         {/* Editor Area */}
-        <div 
+        <div
           className="flex flex-col bg-gray-900 flex-1"
         >
-          {console.log('Rendering editor area - readOnlyFile:', readOnlyFile)}
           {readOnlyFile ? (
             <>
               <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
@@ -277,7 +270,6 @@ const Preview = () => {
               <div className="bg-gray-800 border-b border-gray-700 px-4 py-2">
                 <h3 className="text-sm font-medium text-gray-300">App.jsx</h3>
               </div>
-              {console.log('Rendering CodeEditor with content length:', appContent?.length)}
               <CodeEditor
                 content={appContent}
                 onChange={handleAppContentChange}

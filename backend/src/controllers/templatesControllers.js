@@ -110,5 +110,40 @@ export class templateController{
             res.status(500).json({ error: 'Failed to copy template', details: error.message });
         }
     }
+
+    static async likeTemplate(req, res) {
+        try {
+            const { canvaId } = req.params;
+
+            console.log('👍 Liking template:', canvaId);
+
+            const updateParams = {
+                TableName: templateController.tableName,
+                Key: { canvaId },
+                UpdateExpression: 'SET likes = if_not_exists(likes, :zero) + :inc',
+                ExpressionAttributeValues: {
+                    ':inc': 1,
+                    ':zero': 0
+                },
+                ReturnValues: 'ALL_NEW'
+            };
+
+            const result = await docClient.send(new UpdateCommand(updateParams));
+
+            if (!result.Attributes) {
+                return res.status(404).json({ error: 'Template not found' });
+            }
+
+            console.log('✅ Template liked successfully:', canvaId);
+
+            res.json({
+                message: 'Template liked successfully',
+                likes: result.Attributes.likes || 0
+            });
+        } catch (error) {
+            console.error('❌ Error liking template:', error);
+            res.status(500).json({ error: 'Failed to like template', details: error.message });
+        }
+    }
     
 }

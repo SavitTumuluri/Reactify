@@ -23,7 +23,7 @@ export class IRCanvasContainer extends IRRoot {
     };
     super(null, {
       size: { w: 1200, h: 800 },
-      componentName: "NewComponent",
+      componentName: init.componentName || "Canvas",
       ...init,
       styles: { ...defaultStyles, ...(init.styles ?? {}) },
     });
@@ -102,7 +102,9 @@ const CanvasContainer = forwardRef(function CanvasContainer(
   // IR root: doc size stays as IR state (not in styles)
   ir.useState("styles", {});
   const [docSize] = ir.useState("size", { w: 1200, h: 800 });
-  ir.useState("componentName", "NewComponent");
+  
+  // Component name is managed by Editor.jsx, no need to fetch here
+  const componentName = ir?.get?.("componentName") || "Canvas";
 
   // Ensure styles object exists + defaults (merge without clobber)
   useEffect(() => {

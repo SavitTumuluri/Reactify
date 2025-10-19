@@ -29,7 +29,6 @@ const YourDesigns = ({ onItemClick }) => {
         setLoading(true)
         setError(null)
         const fetchedCanvases = await canvaService.getAllCanvases()
-        console.log('fetchedCanvases:', fetchedCanvases)
         setCanvases(fetchedCanvases)
       } catch (err) {
         console.error('Error fetching canvases:', err)
@@ -46,7 +45,6 @@ const YourDesigns = ({ onItemClick }) => {
     if (newCanvasName.trim()) {
       try {
         setLoading(true)
-        console.log('Creating new canvas:', newCanvasName.trim())
         
         const newCanvas = await canvaService.createCanvas(newCanvasName.trim())
         
@@ -72,7 +70,6 @@ const YourDesigns = ({ onItemClick }) => {
     if (window.confirm('Are you sure you want to delete this canvas?')) {
       try {
         setLoading(true)
-        console.log('Deleting canvas:', canvasId)
         
         await canvaService.deleteCanvas(canvasId)
         
@@ -89,7 +86,6 @@ const YourDesigns = ({ onItemClick }) => {
 
   // Handle loading canvas
   const handleLoadCanvas = (canvas) => {
-    console.log('Loading canvas:', canvas)
     const canvasId = canvas.canvasId || canvas.id || canvas._id
     onItemClick({
       id: canvasId,

@@ -68,7 +68,6 @@ class GlobalStateManager {
       // Load canvas data from DB on mount / id change
     useEffect(() => {
         this.canvasId = canvasId
-        console.log("Canvas loading - this should only happen once")
         stateman.load(canvasId,userId)
     }, [userId, canvasId]);
     return setIR
@@ -84,7 +83,6 @@ class GlobalStateManager {
         ir: Save(this.root),
         timestamp: new Date().toISOString(),
     };
-    console.log(payload);
     await saveToDB(payload, this.userId, this.canvasId, this.root._data.componentName);
   }
   async load(canvasId, userId) {
@@ -99,6 +97,24 @@ class GlobalStateManager {
             const maybeIR = parsed?.ir ?? parsed;
             const loaded = Load(maybeIR);
             if (loaded) {
+                // Update componentName with the actual canvas name from the database
+                // We need to fetch the canvas name from the backend
+                try {
+                  const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5006'}/api/canvas/${canvasId}`, {
+                    headers: {
+                      'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                  });
+                  if (response.ok) {
+                    const canvasData = await response.json();
+                    if (canvasData.canvas && canvasData.canvas.name) {
+                      loaded.set('componentName', canvasData.canvas.name);
+                    }
+                  }
+                } catch (nameError) {
+                  console.warn('Could not fetch canvas name:', nameError);
+                }
+                
                 this.history.clear()
                 this.setRoot(loaded);
             }

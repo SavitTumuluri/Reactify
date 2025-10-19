@@ -5,6 +5,7 @@ import aiRoutes from './aiRoutes.js';
 import s3Routes from './s3Routes.js';
 import agentRoutes from './agentRoutes.js';
 import canvaRoutes from './canvaRoute.js';
+import templatesRoutes from './templatesRoutes.js';
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.use('/', aiRoutes); // exposes /api/ai/*
 router.use('/', agentRoutes); // exposes /api/ai/agent/plan
 router.use('/', s3Routes); // exposes /api/s3/*
 router.use('/canvas', canvaRoutes);
+router.use('/templates', templatesRoutes);
 
 
 export default router;
