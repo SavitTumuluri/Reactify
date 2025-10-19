@@ -164,7 +164,8 @@ export default function HeroSection() {
             </AnimatedGroup>
           </div>
         </section>
-        <NewComponent />
+        
+        {/* <NewComponent /> */}
       
 
       </main>

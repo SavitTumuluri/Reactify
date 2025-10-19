@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5006";
+const BASE = import.meta.env.VITE_BACKEND_URL;
 
 export async function generateAISVG(description) {
   const r = await fetch(`${BASE}/api/ai/svg`, {

@@ -35,7 +35,7 @@ class WebSocketService {
     this.statusListeners.delete(cb);
   }
 
-  connect(serverUrl = 'http://localhost:5006') {
+  connect(serverUrl) {
     this.serverUrl = serverUrl;
 
     // If there’s already a socket, just ensure it’s connected.
@@ -111,7 +111,7 @@ class WebSocketService {
       return true;
     }
     // ensure a connection attempt is underway
-    if (!this.socket) this.connect(this.serverUrl || 'http://localhost:5006');
+    if (!this.socket) this.connect(this.serverUrl);
     this.emitQueue.push({ event, payload });
     return true; // report success; it will send once connected
   }

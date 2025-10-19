@@ -38,74 +38,7 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
               <p className="text-gray-400">{isTemplate ? item.category : 'Canvas Design'}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {isTemplate ? (
-                <>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <StarIcon className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm text-gray-400">Rating</span>
-                    </div>
-                    <p className="text-lg font-semibold text-white">{item.rating || 'N/A'}/5</p>
-                  </div>
-                  
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ArrowDownTrayIcon className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm text-gray-400">Downloads</span>
-                    </div>
-                    <p className="text-lg font-semibold text-white">{item.downloads || '0'}</p>
-                  </div>
-                  
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm text-gray-400">Price</span>
-                    </div>
-                    <p className="text-lg font-semibold text-white">{item.price || 'Free'}</p>
-                  </div>
-                  
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <UserIcon className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-gray-400">Author</span>
-                    </div>
-                    <p className="text-lg font-semibold text-white">{item.author || 'Unknown'}</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm text-gray-400">Size</span>
-                    </div>
-                    <p className="text-lg font-semibold text-white">{item.size || 'Auto-saved'}</p>
-                  </div>
-                  
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm text-gray-400">Dimensions</span>
-                    </div>
-                    <p className="text-lg font-semibold text-white">{item.dimensions || '1200x800'}</p>
-                  </div>
-                  
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <UserIcon className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-gray-400">Created By</span>
-                    </div>
-                    <p className="text-lg font-semibold text-white">{item.createdBy || 'You'}</p>
-                  </div>
-                  
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <CalendarIcon className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm text-gray-400">Last Modified</span>
-                    </div>
-                    <p className="text-lg font-semibold text-white">{item.lastModified || 'Unknown'}</p>
-                  </div>
-                </>
-              )}
-            </div>
+             
 
             {/* Canvas-specific additional info */}
             {!isTemplate && item.canvasData && (
@@ -125,11 +58,6 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
               className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
             >
               {isTemplate ? 'Use Template' : 'Open Design'}
-            </button>
-            
-            <button className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
-              <HeartIcon className="h-4 w-4" />
-              {isTemplate ? 'Add to Favorites' : 'Add to Favorites'}
             </button>
           </div>
           </div>

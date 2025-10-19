@@ -3,6 +3,7 @@ import { IR } from "../core/IR"
 import {saveToDB, loadFromDB} from "./DatabaseService"
 import websocketService from "../../lib/websocketService";
 import { useAuth } from "../../lib/AuthContext";
+import { authService } from "../../lib/authService";
 import {useState, useEffect, useCallback} from "react"
 import {HistoryManager} from "./HistoryManager"
 import { useParams, useNavigate } from "react-router-dom";
@@ -58,7 +59,7 @@ class GlobalStateManager {
 
       // --- SOCKET: connect + live status subscription
     useEffect(() => {
-        const serverUrl = import.meta.env?.VITE_BACKEND_URL || "http://localhost:5006";
+        const serverUrl = import.meta.env?.VITE_BACKEND_URL;
         websocketService.connect(serverUrl);
         const handler = ({ isConnected }) => setIsConnected(isConnected);
         websocketService.onStatusChange(handler);
@@ -100,9 +101,15 @@ class GlobalStateManager {
                 // Update componentName with the actual canvas name from the database
                 // We need to fetch the canvas name from the backend
                 try {
-                  const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5006'}/api/canvas/${canvasId}`, {
+                  const accessToken = authService.getAccessToken();
+                  if (!accessToken) {
+                    console.warn('No access token available for canvas name fetch');
+                    return;
+                  }
+                  
+                  const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/canvas/${canvasId}`, {
                     headers: {
-                      'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                      'Authorization': `Bearer ${accessToken}`
                     }
                   });
                   if (response.ok) {

@@ -73,7 +73,7 @@ export default function EditorPage() {
             return;
           }
           
-          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5006'}/api/canvas/${canvasId}`, {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/canvas/${canvasId}`, {
             headers: {
               'Authorization': `Bearer ${accessToken}`
             }

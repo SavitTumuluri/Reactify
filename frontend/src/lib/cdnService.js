@@ -1,12 +1,5 @@
-// Simple client for S3 image/video uploads, listing, and deletion via backend routes
-// Backend exposes:
-// - POST   /api/s3/presign                   { filename, contentType, prefix? } -> { key, url, ... }
-// - GET    /api/s3/images?prefix=&token=      -> { items:[{key,url,...}], nextToken }
-// - DELETE /api/s3/file                       { key } | { keys: string[] } -> { ok, deleted, ... }
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5006';
-
-// Helper function to get auth headers
 function getAuthHeaders() {
   const sessionData = localStorage.getItem('auth0_session');
   if (sessionData) {
@@ -59,13 +52,6 @@ export async function listS3Images({ prefix, token } = {}) {
   return res.json();
 }
 
-/**
- * Delete one or more objects in the authenticated user's filespace.
- * Uses your backend's DELETE /api/s3/file endpoint.
- *
- * @param {string[]|string} keys - S3 object keys (full keys as returned by listS3Images)
- * @returns {Promise<object>} backend response (e.g., { ok, deleted, rejected, errors })
- */
 export async function deleteS3Files(keys) {
   const arr = Array.isArray(keys) ? keys.filter(Boolean) : [keys].filter(Boolean);
   if (arr.length === 0) throw new Error('No keys provided for deletion');
@@ -79,7 +65,6 @@ export async function deleteS3Files(keys) {
     body: JSON.stringify({ keys: arr }),
   });
 
-  // Try to parse JSON either way to surface backend error details
   const text = await res.text();
   let data = null;
   try {
@@ -99,5 +84,4 @@ export async function deleteS3Files(keys) {
   return data;
 }
 
-/** Convenience single-delete wrapper */
 export const deleteS3File = (key) => deleteS3Files([key]);

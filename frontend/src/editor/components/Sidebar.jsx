@@ -655,7 +655,7 @@ function buildSchema({ ir, selected, onAddElement }) {
           set: (v) => selected.writeStyle("borderStyle", v),
           depsToken: selToken,
         },
-        {
+        selected?.constructor?.name === 'IRRect' && {
           key: `appearance.cornerRadius.${selToken ?? "none"}`,
           type: "range",
           label: "Corner Radius",

@@ -20,13 +20,10 @@ const Templates = ({ onItemClick }) => {
   useEffect(() => {
     fetchTemplates()
   }, [])
-
-  // REMOVED: const token = authService.getAccessToken();
-
   const fetchTemplates = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:5006/api/templates')
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/templates`)
       
       if (!response.ok) {
         throw new Error('Failed to fetch templates')
@@ -47,7 +44,7 @@ const Templates = ({ onItemClick }) => {
     e.stopPropagation()
     
     try {
-      const response = await fetch(`http://localhost:5006/api/templates/${canvaId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/templates/${canvaId}/like`, {
         method: 'POST'
       })
       
@@ -73,7 +70,7 @@ const Templates = ({ onItemClick }) => {
         return
       }
       
-      const url = `http://localhost:5006/api/templates/${template.canvaId}/copy`
+      const url = `${import.meta.env.VITE_BACKEND_URL}/api/templates/${template.canvaId}/copy`
       
       const response = await fetch(url, {
         method: 'POST',
@@ -85,7 +82,7 @@ const Templates = ({ onItemClick }) => {
 
       if (!response.ok) {
         const error = await response.json()
-        console.error('❌ Error:', error)
+        console.error('Error:', error)
         throw new Error(error.error || 'Failed to copy template')
       }
 
@@ -93,7 +90,6 @@ const Templates = ({ onItemClick }) => {
       
       alert('Template copied to your canvases!')
       
-      // Redirect to edit the new canvas
       window.location.href = `/editor/${data.canvas.canvasId}`
       
     } catch (err) {
@@ -102,7 +98,6 @@ const Templates = ({ onItemClick }) => {
     }
   }
 
-  // Filter templates based on search query and category
   const filteredTemplates = templates
     .filter(template => {
       const matchesSearch = template.name?.toLowerCase().includes(searchQuery.toLowerCase())

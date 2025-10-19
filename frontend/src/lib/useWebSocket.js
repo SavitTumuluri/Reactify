@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import websocketService from './websocketService';
 
-export const useWebSocket = (serverUrl = 'http://localhost:5006') => {
+export const useWebSocket = (serverUrl) => {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState({
     isConnected: false,
@@ -14,7 +14,6 @@ export const useWebSocket = (serverUrl = 'http://localhost:5006') => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    // Connect to WebSocket
     socketRef.current = websocketService.connect(serverUrl);
 
     // Set up connection status monitoring
@@ -24,10 +23,8 @@ export const useWebSocket = (serverUrl = 'http://localhost:5006') => {
       setIsConnected(status.isConnected);
     };
 
-    // Initial status check
     updateConnectionStatus();
 
-    // Set up event listeners for connection status
     const handleConnect = () => {
       updateConnectionStatus();
       setLastError(null);
@@ -47,7 +44,6 @@ export const useWebSocket = (serverUrl = 'http://localhost:5006') => {
     socketRef.current.on('disconnect', handleDisconnect);
     socketRef.current.on('connect_error', handleError);
 
-    // Set up canvas-specific event listeners
     const handleCanvasSaved = (data) => {
       setLastSaveStatus({ type: 'saved', data, timestamp: new Date() });
     };
@@ -60,7 +56,6 @@ export const useWebSocket = (serverUrl = 'http://localhost:5006') => {
     websocketService.onCanvasSaved(handleCanvasSaved);
     websocketService.onCanvasSaveError(handleCanvasSaveError);
 
-    // Cleanup on unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.off('connect', handleConnect);
@@ -72,7 +67,6 @@ export const useWebSocket = (serverUrl = 'http://localhost:5006') => {
     };
   }, [serverUrl]);
 
-  // Canvas operations
   const saveCanvasData = (userId, canvasId, canvasData, canvasName = null) => {
     const success = websocketService.saveCanvasData(userId, canvasId, canvasData, canvasName);
     if (!success) {
