@@ -29,8 +29,14 @@ export const useCanvasAutoSave = (
   const lastSavedNameRef = useRef(null);   // last saved canvasName
   const isSavingRef = useRef(false);
 
+  // Dedup: prevent multiple onSaveSuccess calls for the same logical save
+  // This stores an identifier representing the last processed success payload.
+  const lastSuccessRef = useRef(null);
+
   // ---- Perform the actual save (stable, with fresh canvasName) ----
   const performSave = useCallback(() => {
+    // Debug: track when a save attempt occurs
+    // console.log("[useCanvasAutoSave] performSave()")
     if (isSavingRef.current) return;
     if (!enabled || !isConnected || !userId || !canvasId || !canvasData) return;
 
@@ -41,7 +47,11 @@ export const useCanvasAutoSave = (
 
     if (success) {
       // On synchronous success return, optimistically record what we attempted to save
-      lastSavedDataRef.current = JSON.stringify(canvasData);
+      try {
+        lastSavedDataRef.current = JSON.stringify(canvasData);
+      } catch {
+        // If serialization fails, don't update the ref to avoid false positives
+      }
       lastSavedNameRef.current = canvasName || lastSavedNameRef.current;
     } else {
       onSaveError?.(lastError || 'Failed to save canvas data');
@@ -69,8 +79,14 @@ export const useCanvasAutoSave = (
 
     saveTimeoutRef.current = setTimeout(() => {
       if (enabled && isConnected && canvasData && userId && canvasId) {
-        const currentDataString = JSON.stringify(canvasData);
-        if (currentDataString !== lastSavedDataRef.current) {
+        let currentDataString = null;
+        try {
+          currentDataString = JSON.stringify(canvasData);
+        } catch {
+          // If serialization fails, attempt to save anyway to avoid losing data
+          currentDataString = null;
+        }
+        if (currentDataString === null || currentDataString !== lastSavedDataRef.current) {
           performSave();
         }
       }
@@ -97,14 +113,19 @@ export const useCanvasAutoSave = (
     };
   }, [canvasData, userId, canvasId, enabled, debouncedSave]);
 
-
+  // ---- Save on name change if data is dirty relative to last saved ----
   useEffect(() => {
     if (!enabled || !isConnected || !userId || !canvasId) return;
 
- 
     if (canvasName && canvasName !== lastSavedNameRef.current && canvasData) {
-      const currentDataString = JSON.stringify(canvasData);
-      if (currentDataString !== lastSavedDataRef.current) {
+      let currentDataString = null;
+      try {
+        currentDataString = JSON.stringify(canvasData);
+      } catch {
+        // If serialization fails, treat as dirty
+        currentDataString = null;
+      }
+      if (currentDataString === null || currentDataString !== lastSavedDataRef.current) {
         performSave();
       }
     }
@@ -117,14 +138,28 @@ export const useCanvasAutoSave = (
     }
   }, [enabled, isConnected, canvasData, userId, canvasId, performSave]);
 
-  // ---- Propagate save status to callers ----
+  // ---- Propagate save status to callers (with dedup of successes) ----
   useEffect(() => {
-    if (lastSaveStatus) {
-      if (lastSaveStatus.type === 'saved') {
-        onSaveSuccess?.(lastSaveStatus.data);
-      } else if (lastSaveStatus.type === 'error') {
-        onSaveError?.(lastSaveStatus.error);
+    if (!lastSaveStatus) return;
+
+    if (lastSaveStatus.type === 'saved') {
+      // Create a lightweight, stable identifier for the success payload.
+      // If your backend includes a saveId/version/timestamp, prefer that.
+      let id;
+      try {
+        // Avoid large payloads if needed; adjust as appropriate.
+        id = JSON.stringify(lastSaveStatus.data);
+      } catch {
+        // Fallback: if we cannot serialize, always treat as new.
+        id = Symbol('unspecified-save');
       }
+
+      if (id !== lastSuccessRef.current) {
+        lastSuccessRef.current = id;
+        onSaveSuccess?.(lastSaveStatus.data);
+      }
+    } else if (lastSaveStatus.type === 'error') {
+      onSaveError?.(lastSaveStatus.error);
     }
   }, [lastSaveStatus, onSaveSuccess, onSaveError]);
 
