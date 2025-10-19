@@ -14,15 +14,18 @@ import {
 } from 'lucide-react'
 import { canvaService } from '../../lib/canvaService'
 import { useAuth } from '../../lib/AuthContext'
+import { usePopup } from '../../lib/PopupContext'
 
-const YourDesigns = ({ onItemClick }) => {
+const YourDesigns = ({ onItemClick, refreshTrigger }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newCanvasName, setNewCanvasName] = useState('')
   const [canvases, setCanvases] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [deletingCanvasId, setDeletingCanvasId] = useState(null)
   const { user } = useAuth()
+  const { confirm } = usePopup()
 
   // Fetch canvases from API
   useEffect(() => {
@@ -46,7 +49,7 @@ const YourDesigns = ({ onItemClick }) => {
     }
 
     fetchCanvases()
-  }, [user])
+  }, [user, refreshTrigger])
 
   const handleCreateCanvas = async () => {
     if (newCanvasName.trim()) {
@@ -85,20 +88,35 @@ const YourDesigns = ({ onItemClick }) => {
   const handleDeleteCanvas = async (canvasId, e) => {
     e.stopPropagation()
     
-    if (window.confirm('Are you sure you want to delete this canvas?')) {
-      try {
+    // Prevent multiple clicks on the same canvas
+    if (deletingCanvasId === canvasId) return
+    
+    setDeletingCanvasId(canvasId)
+    
+    try {
+      const confirmed = await confirm(
+        'Are you sure you want to delete this canvas? This action cannot be undone.',
+        {
+          title: 'Delete Canvas',
+          confirmText: 'Delete',
+          cancelText: 'Cancel'
+        }
+      )
+      
+      if (confirmed) {
         setLoading(true)
         
         await canvaService.deleteCanvas(canvasId)
         
         // Remove the canvas from the list
         setCanvases(prev => prev.filter(canvas => canvas.canvasId !== canvasId))
-      } catch (err) {
-        console.error('Error deleting canvas:', err)
-        setError(err.message)
-      } finally {
-        setLoading(false)
       }
+    } catch (err) {
+      console.error('Error deleting canvas:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+      setDeletingCanvasId(null)
     }
   }
 
@@ -355,10 +373,15 @@ const YourDesigns = ({ onItemClick }) => {
                     </div>
                     <motion.button
                       onClick={(e) => handleDeleteCanvas(design.id, e)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-900/20"
-                      title="Delete canvas"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
+                      disabled={deletingCanvasId === design.id}
+                      className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg ${
+                        deletingCanvasId === design.id 
+                          ? 'text-gray-500 cursor-not-allowed' 
+                          : 'text-red-400 hover:text-red-300 hover:bg-red-900/20'
+                      }`}
+                      title={deletingCanvasId === design.id ? "Deleting..." : "Delete canvas"}
+                      whileHover={deletingCanvasId === design.id ? {} : { scale: 1.1 }}
+                      whileTap={deletingCanvasId === design.id ? {} : { scale: 0.9 }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </motion.button>

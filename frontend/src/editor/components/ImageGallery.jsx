@@ -1,5 +1,7 @@
 import React from 'react';
 import { listS3Images, deleteS3Files } from '../../lib/cdnService';
+import { useNotification } from '../../lib/NotificationContext';
+import { usePopup } from '../../lib/PopupContext';
 
 const IMAGE_EXTS = ['jpg','jpeg','png','gif','webp','bmp','tiff','svg'];
 const VIDEO_EXTS = ['mp4','mov','webm','avi','mkv','m4v','qt'];
@@ -180,6 +182,8 @@ export default function ImageGallery({ open, onClose, onSelect }) {
   const [selectMode, setSelectMode] = React.useState(false);
   const [selectedKeys, setSelectedKeys] = React.useState(new Set());
   const [deleting, setDeleting] = React.useState(false);
+  const { showError } = useNotification();
+  const { confirm } = usePopup();
 
   const loadImages = React.useCallback(async (token) => {
     try {
@@ -213,9 +217,21 @@ export default function ImageGallery({ open, onClose, onSelect }) {
 
   // Single-item delete used by the per-tile trash button
   const deleteOne = async (key) => {
-    const ok = window.confirm(`Delete this file?\n${key}\nThis cannot be undone.`);
-    if (!ok) return;
+    // Prevent multiple clicks while deleting
+    if (deleting) return;
+    
+    const confirmed = await confirm(
+      `Delete this file?\n\n${key}\n\nThis cannot be undone.`,
+      {
+        title: 'Delete File',
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      }
+    );
+    if (!confirmed) return;
+    
     try {
+      setDeleting(true);
       // Optimistic update after server confirms
       await deleteS3Files([key]);
       setItems((prev) => prev.filter((it) => it.key !== key));
@@ -226,7 +242,9 @@ export default function ImageGallery({ open, onClose, onSelect }) {
       });
     } catch (err) {
       console.error('Delete failed', err);
-      alert('Failed to delete. Please try again.');
+      showError('Failed to delete. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -234,8 +252,15 @@ export default function ImageGallery({ open, onClose, onSelect }) {
   const handleDeleteBatch = async () => {
     const keys = Array.from(selectedKeys);
     if (keys.length === 0) return;
-    const ok = window.confirm(`Delete ${keys.length} file(s)? This cannot be undone.`);
-    if (!ok) return;
+    const confirmed = await confirm(
+      `Delete ${keys.length} file(s)? This cannot be undone.`,
+      {
+        title: 'Delete Files',
+        confirmText: 'Delete All',
+        cancelText: 'Cancel'
+      }
+    );
+    if (!confirmed) return;
     try {
       setDeleting(true);
       await deleteS3Files(keys);
@@ -244,7 +269,7 @@ export default function ImageGallery({ open, onClose, onSelect }) {
       setSelectedKeys(new Set());
     } catch (err) {
       console.error('Delete failed', err);
-      alert('Failed to delete. Please try again.');
+      showError('Failed to delete. Please try again.');
     } finally {
       setDeleting(false);
     }

@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { authService } from '../../lib/authService'
+import { useNotification } from '../../lib/NotificationContext'
 import { 
   MagnifyingGlassIcon, 
   AdjustmentsHorizontalIcon,
   ChevronDownIcon,
-  Bars3Icon,
-  StarIcon,
-  HeartIcon
+  Bars3Icon
 } from '@heroicons/react/24/outline'
 
 const Templates = ({ onItemClick }) => {
@@ -15,7 +14,8 @@ const Templates = ({ onItemClick }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortBy, setSortBy] = useState('likes')
+  const [sortBy, setSortBy] = useState('newest')
+  const { showSuccess, showError, showWarning } = useNotification()
 
   useEffect(() => {
     fetchTemplates()
@@ -40,33 +40,15 @@ const Templates = ({ onItemClick }) => {
     }
   }
   
-  const handleLike = async (e, canvaId) => {
-    e.stopPropagation()
-    
-    try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/templates/${canvaId}/like`, {
-        method: 'POST'
-      })
-      
-      if (response.ok) {
-        setTemplates(templates.map(t => 
-          t.canvaId === canvaId ? { ...t, likes: (t.likes || 0) + 1 } : t
-        ))
-      }
-    } catch (err) {
-      console.error('Error liking template:', err)
-    }
-  }
 
   const handleCopy = async (e, template) => {
     e.stopPropagation()
     
     try {
-      // Get token inside the function
       const token = authService.getAccessToken()
       
       if (!token) {
-        alert('Please log in to copy templates')
+        showWarning('Please log in to copy templates')
         return
       }
       
@@ -88,13 +70,16 @@ const Templates = ({ onItemClick }) => {
 
       const data = await response.json()
       
-      alert('Template copied to your canvases!')
+      showSuccess('Template copied to your canvases!')
       
-      window.location.href = `/editor/${data.canvas.canvasId}`
+      // Small delay to show the notification before reload
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
       
     } catch (err) {
-      console.error('❌ Error copying template:', err)
-      alert(err.message || 'Failed to copy template. Please try again.')
+      console.error('Error copying template:', err)
+      showError(err.message || 'Failed to copy template. Please try again.')
     }
   }
 
@@ -105,7 +90,6 @@ const Templates = ({ onItemClick }) => {
       return matchesSearch && matchesCategory
     })
     .sort((a, b) => {
-      if (sortBy === 'likes') return (b.likes || 0) - (a.likes || 0)
       if (sortBy === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
       return 0
     })
@@ -171,7 +155,6 @@ const Templates = ({ onItemClick }) => {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm"
               >
-                <option value="likes">Most Popular</option>
                 <option value="newest">Newest</option>
               </select>
               <div className="flex space-x-2">
@@ -206,12 +189,6 @@ const Templates = ({ onItemClick }) => {
                   onClick={() => onItemClick && onItemClick(template)}
                   className="bg-gray-700 rounded-xl p-4 hover:bg-gray-600 transition-colors cursor-pointer group relative"
                 >
-                  {(template.likes || 0) >= 10 && (
-                    <div className="absolute top-3 left-3 bg-yellow-500 text-black px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 z-10">
-                      <StarIcon className="h-3 w-3" />
-                      Popular
-                    </div>
-                  )}
                   
                   <div className="aspect-video bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg mb-3 flex items-center justify-center text-4xl relative overflow-hidden">
                     <div className="absolute inset-0 bg-black bg-opacity-20"></div>
@@ -223,34 +200,12 @@ const Templates = ({ onItemClick }) => {
                       <h3 className="text-sm font-medium text-white truncate flex-1 mr-2">
                         {template.name || 'Untitled Template'}
                       </h3>
-                      <button 
-                        onClick={(e) => handleLike(e, template.canvaId)}
-                        className="p-1 hover:bg-gray-600 rounded transition-colors"
-                      >
-                        <HeartIcon className="h-4 w-4 text-gray-400 hover:text-red-500" />
-                      </button>
                     </div>
                     
                     <p className="text-xs text-gray-400">
-                      {template.category || 'General'}
+                      {template.category}
                     </p>
                     
-                    <div className="flex items-center justify-between text-xs text-gray-400">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1">
-                          <HeartIcon className="h-3 w-3 text-red-500" />
-                          <span>{template.likes || 0}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          <span>{template.views || 0}</span>
-                        </div>
-                      </div>
-                      <span className="text-green-400 font-medium">Free</span>
-                    </div>
 
                     {/* Use Template Button */}
                     <button

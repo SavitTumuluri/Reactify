@@ -4,6 +4,8 @@ import HeroSection from './components/layout/hero-section'
 import HomePage from './home/App'
 import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
+import { NotificationProvider } from './lib/NotificationContext'
+import { PopupProvider } from './lib/PopupContext'
 import EditorPage from "./editor/Editor"
 import PreviewPage from "../preview/Preview"
 import LoadingScreen from './components/ui/LoadingScreen'
@@ -75,7 +77,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <NotificationProvider>
+        <PopupProvider>
+          <AppContent />
+        </PopupProvider>
+      </NotificationProvider>
     </AuthProvider>
   )
 }

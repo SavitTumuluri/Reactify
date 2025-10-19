@@ -16,6 +16,7 @@ import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { motion } from 'motion/react';
 import { uploadImageToS3 } from '../../lib/cdnService';
+import { useNotification } from '../../lib/NotificationContext';
 import getStateManager from '../state/GlobalStateManager';
 
 const stateman = getStateManager()
@@ -33,6 +34,7 @@ export default function Header({
   onExportPNG
 }) {
   const fileInputRef = React.useRef(null);
+  const { showError } = useNotification();
 
   const handleSelectFile = () => fileInputRef.current?.click();
 
@@ -47,7 +49,7 @@ export default function Header({
       onOpenGallery?.();
     } catch (err) {
       console.error('Upload failed', err);
-      alert('Image upload failed. See console for details.');
+      showError('Image upload failed. See console for details.');
     }
   };
 

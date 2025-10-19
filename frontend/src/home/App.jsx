@@ -11,6 +11,7 @@ const Home = () => {
   const [activeTab, setActiveTab] = useState('your-designs')
   const [selectedItem, setSelectedItem] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -43,6 +44,10 @@ const Home = () => {
       setSidebarOpen(false)
       setSelectedItem(null)
     }
+  }
+
+  const handleRefreshDesigns = () => {
+    setRefreshTrigger(prev => prev + 1)
   }
 
   return (
@@ -94,7 +99,7 @@ const Home = () => {
           {/* Content Area */}
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'your-designs' && (
-              <YourDesigns onItemClick={handleItemClick} />
+              <YourDesigns onItemClick={handleItemClick} refreshTrigger={refreshTrigger} />
             )}
             {activeTab === 'templates' && (
               <Templates onItemClick={handleTemplateClick} />
@@ -109,6 +114,7 @@ const Home = () => {
           onClose={handleCloseSidebar}
           type={activeTab === 'templates' ? 'template' : 'canvas'}
           onOpenDesign={handleOpenDesign}
+          onRefreshDesigns={handleRefreshDesigns}
         />
       </div>
     </div>
