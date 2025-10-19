@@ -148,12 +148,16 @@ export default function HeroSection() {
             >
               <div className="mask-b-from-55% relative -mr-56 mt-8 overflow-hidden px-2 sm:mr-0 sm:mt-12 md:mt-20">
                 <div className="inset-shadow-2xs ring-white/5 bg-black/10 relative mx-auto max-w-6xl overflow-hidden rounded-2xl border border-white/10 p-4 shadow-lg shadow-black/50 ring-1 backdrop-blur-sm">
-                  <img
-                    className="z-2 border-white/10 aspect-15/8 relative rounded-2xl border"
-                    src="/brainstorm.png"
-                    alt="Reactify app interface showing code compilation in browser"
+                  <video
+                    className="z-2 border-white/10 aspect-[15/8] relative rounded-2xl border"
+                    src="/reactify.mp4"
+                    autoPlay 
+                    loop
+                    muted
+                    playsInline
                     width="2700"
                     height="1440"
+                    alt="Reactify app interface showing code compilation in browser"
                   />
                 </div>
               </div>
