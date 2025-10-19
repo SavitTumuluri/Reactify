@@ -49,6 +49,9 @@ export default function EditorPage() {
   
   // Separate state for canvas name to avoid triggering autosave
   const [canvasName, setCanvasName] = useState(null);
+  
+  // Track if IR has been loaded from database to prevent premature autosave
+  const [isIRLoaded, setIsIRLoaded] = useState(false);
 
   // Keep GlobalStateManager wired to IR; bump version when it swaps
   const setIR = stateman.init(ir, forceSetIR,setIrVersion);
@@ -56,7 +59,7 @@ export default function EditorPage() {
   // ---- Autosave + checkpoint logs ----
   const canvasDataPayload = { ir: Save(ir) };
   // Don't send canvasName during autosave - let backend preserve existing name
-  const { manualSave } = useCanvasAutoSave(userId, canvasId, canvasDataPayload, null, {
+  const { manualSave } = useCanvasAutoSave(userId, canvasId, isIRLoaded ? canvasDataPayload : null, null, {
     debounceDelay: 800,
     onSaveSuccess: async (data) => {
       // Only capture preview on manual saves, not on every autosave
@@ -142,6 +145,13 @@ export default function EditorPage() {
       setCanvasName(ir.get('componentName'));
     }
   }, [ir]);
+
+  // Mark IR as loaded when it has content or when irVersion changes (indicating IR was updated)
+  useEffect(() => {
+    if (ir && (ir.children.length > 0 || irVersion > 0)) {
+      setIsIRLoaded(true);
+    }
+  }, [ir, irVersion]);
 
 
   // ---- UI state ----
