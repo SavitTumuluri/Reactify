@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { authService } from '../../../lib/authService'
 import { 
   MagnifyingGlassIcon, 
   AdjustmentsHorizontalIcon,
@@ -19,6 +20,8 @@ const Templates = ({ onItemClick }) => {
   useEffect(() => {
     fetchTemplates()
   }, [])
+
+  // REMOVED: const token = authService.getAccessToken();
 
   const fetchTemplates = async () => {
     try {
@@ -41,7 +44,7 @@ const Templates = ({ onItemClick }) => {
   }
   
   const handleLike = async (e, canvaId) => {
-    e.stopPropagation() // Prevent triggering onItemClick
+    e.stopPropagation()
     
     try {
       const response = await fetch(`http://localhost:5006/api/templates/${canvaId}/like`, {
@@ -49,13 +52,60 @@ const Templates = ({ onItemClick }) => {
       })
       
       if (response.ok) {
-        // Update local state
         setTemplates(templates.map(t => 
           t.canvaId === canvaId ? { ...t, likes: (t.likes || 0) + 1 } : t
         ))
       }
     } catch (err) {
       console.error('Error liking template:', err)
+    }
+  }
+
+  const handleCopy = async (e, template) => {
+    e.stopPropagation()
+    
+    console.log('🔄 Starting copy for template:', template)
+    
+    try {
+      // Get token inside the function
+      const token = authService.getAccessToken()
+      console.log('🔑 Token found:', !!token)
+      
+      if (!token) {
+        alert('Please log in to copy templates')
+        return
+      }
+      
+      const url = `http://localhost:5006/api/templates/${template.canvaId}/copy`
+      console.log('📡 Calling:', url)
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('📥 Response status:', response.status)
+
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('❌ Error:', error)
+        throw new Error(error.error || 'Failed to copy template')
+      }
+
+      const data = await response.json()
+      console.log('✅ Success:', data)
+      
+      alert('Template copied to your canvases!')
+      
+      // Redirect to edit the new canvas
+      window.location.href = `/canvas/${data.canvas.canvasId}`
+      
+    } catch (err) {
+      console.error('❌ Error copying template:', err)
+      alert(err.message || 'Failed to copy template. Please try again.')
     }
   }
 
@@ -71,8 +121,6 @@ const Templates = ({ onItemClick }) => {
       if (sortBy === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
       return 0
     })
-
-  const categories = ['All', 'Portfolio', 'E-commerce', 'Blog', 'Business', 'Agency', 'Food', 'SaaS', 'Events']
 
   if (loading) {
     return (
@@ -122,23 +170,6 @@ const Templates = ({ onItemClick }) => {
         </div>
       </div>
 
-      {/* Category Filters */}
-      <div className="flex flex-wrap gap-2">
-        {categories.map((category, index) => (
-          <button
-            key={index}
-            onClick={() => setSelectedCategory(category)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              selectedCategory === category
-                ? 'bg-purple-600 text-white' 
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
       {/* Templates Section */}
       <div className="bg-gray-800 rounded-xl p-6">
         <div className="relative z-10">
@@ -154,7 +185,6 @@ const Templates = ({ onItemClick }) => {
               >
                 <option value="likes">Most Popular</option>
                 <option value="newest">Newest</option>
-                <option value="views">Most Viewed</option>
               </select>
               <div className="flex space-x-2">
                 <button className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">
@@ -233,6 +263,17 @@ const Templates = ({ onItemClick }) => {
                       </div>
                       <span className="text-green-400 font-medium">Free</span>
                     </div>
+
+                    {/* Use Template Button */}
+                    <button
+                      onClick={(e) => handleCopy(e, template)}
+                      className="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Use Template
+                    </button>
                   </div>
                 </div>
               ))}

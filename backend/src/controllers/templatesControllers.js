@@ -42,5 +42,73 @@ export class templateController{
             res.status(500).json({ error: 'Failed to get public templates' });
         }
     }
+
+    static async copyTemplateToCanvas(req, res) {
+        try {
+            const { canvaId } = req.params; // Template canvaId
+            const auth0Id = req.user.sub; // User who's copying
+
+            console.log('📋 Copying template:', canvaId, 'for user:', auth0Id);
+
+            // 1. Get the template from public-canva table
+            const getParams = {
+                TableName: templateController.tableName,
+                Key: { canvaId }
+            };
+
+            const templateResult = await docClient.send(new GetCommand(getParams));
+
+            if (!templateResult.Item) {
+                return res.status(404).json({ error: 'Template not found' });
+            }
+
+            const template = templateResult.Item;
+
+            // 2. Create a new canvas for the user with the template data
+            const newCanvasId = `canvas-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
+            const newCanvas = {
+                canvasId: newCanvasId,
+                userId: auth0Id,
+                name: `Copy of ${template.name}`,
+                canvasData: template.canvasData, // Copy the entire canvas data (ir + bo)
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                timestamp: new Date().toISOString()
+            };
+
+            // Put into the main canvas table - MAKE SURE THIS TABLE NAME IS CORRECT
+            const putParams = {
+                TableName: 'reactify-canvas-data', // ⚠️ Change this to your actual canvas table name!
+                Item: newCanvas
+            };
+
+            await docClient.send(new PutCommand(putParams));
+
+            // 3. Increment the template's copy count
+            const updateParams = {
+                TableName: templateController.tableName,
+                Key: { canvaId },
+                UpdateExpression: 'SET copyCount = if_not_exists(copyCount, :zero) + :inc',
+                ExpressionAttributeValues: {
+                    ':inc': 1,
+                    ':zero': 0
+                },
+                ReturnValues: 'ALL_NEW'
+            };
+
+            await docClient.send(new UpdateCommand(updateParams));
+
+            console.log('✅ Template copied successfully:', newCanvasId);
+
+            res.json({
+                message: 'Template copied successfully',
+                canvas: newCanvas
+            });
+        } catch (error) {
+            console.error('❌ Error copying template:', error);
+            res.status(500).json({ error: 'Failed to copy template', details: error.message });
+        }
+    }
     
 }
