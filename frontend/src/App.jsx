@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from './lib/AuthContext'
 import { NotificationProvider } from './lib/NotificationContext'
 import { PopupProvider } from './lib/PopupContext'
 import EditorPage from "./editor/Editor"
-import PreviewPage from "../preview/Preview"
+import PreviewPage from "./preview/Preview"
 import LoadingScreen from './components/ui/LoadingScreen'
 
 function AppContent() {
