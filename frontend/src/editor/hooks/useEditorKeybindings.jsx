@@ -51,6 +51,16 @@ export default function useEditorKeybindings({
           history.redo?.();
           return;
         }
+        if (key === "s") {
+          e.preventDefault();
+          try {
+            await stateman.save();
+          } catch (err) {
+            // Fallback to console only; UI surfaces connection state elsewhere
+            console.warn("Manual save failed:", err);
+          }
+          return;
+        }
       }
 
       // Delete / Escape / Quick add / Reorder

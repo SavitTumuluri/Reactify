@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { useAuth } from '../../lib/AuthContext'
+import { useAuth } from '../lib/AuthContext'
+import { useWebSocket } from '../lib/useWebSocket'
 import { useNavigate } from 'react-router-dom'
 import { BriefcaseIcon, DocumentIcon } from '@heroicons/react/24/outline'
 import YourDesigns from './components/YourDesigns'
@@ -8,6 +9,7 @@ import ItemSidebar from './components/ItemSidebar'
 
 const Home = () => {
   const { user, logout } = useAuth()
+  const { isConnected, connectionStatus, lastError } = useWebSocket()
   const [activeTab, setActiveTab] = useState('your-designs')
   const [selectedItem, setSelectedItem] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -17,10 +19,12 @@ const Home = () => {
     console.log('Home component mounted')
     console.log('isAuthenticated:', !!user)
     console.log('user:', user)
+    console.log('WebSocket connected:', isConnected)
+    console.log('Connection status:', connectionStatus)
     if (user && user.sub) {
       console.log('User ID from Auth0:', user.sub)
     }
-  }, [user])
+  }, [user, isConnected, connectionStatus])
 
   const tabs = [
     { id: 'your-designs', name: 'Your designs', icon: BriefcaseIcon },
@@ -85,6 +89,14 @@ const Home = () => {
               </div>
               
               <div className="flex items-center space-x-4">
+                {/* WebSocket Status Indicator */}
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="text-xs text-gray-400">
+                    {isConnected ? 'Connected' : 'Disconnected'}
+                  </span>
+                </div>
+                
                 <div className="text-right">
                   <p className="text-sm text-white">{user?.name || 'User'}</p>
                   <p className="text-xs text-gray-400">{user?.email || 'user@example.com'}</p>

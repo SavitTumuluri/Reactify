@@ -1,12 +1,12 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import HeroSection from './components/layout/hero-section'
-import Home from './components/home/App'
-import Editor from './editor/Editor'
-import Preview from './preview/Preview'
+import HomePage from './home/App'
 import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
-
+import EditorPage from "./editor/Editor"
+import PreviewPage from "../preview/Preview"
+import LoadingScreen from './components/ui/LoadingScreen'
 
 function AppContent() {
   const { handleAuthCallback, isAuthenticated, loading } = useAuth()
@@ -26,6 +26,9 @@ function AppContent() {
     }
   }, [handleAuthCallback])
 
+  if (loading) {
+    return <LoadingScreen message="Initializing Reactify..." />
+  }
 
   return (
     <Router>
@@ -37,51 +40,22 @@ function AppContent() {
         <Route 
           path="/home" 
           element={
-            loading ? (
-              <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-xl font-semibold">Loading...</h1>
-                </div>
-              </div>
-            ) : isAuthenticated ? (
-              <Home />
-            ) : (
-              <Navigate to="/" replace />
-            )
+            isAuthenticated ? <HomePage /> : <Navigate to="/" replace />
           } 
         />
         <Route 
-          path="/editor/:id" 
+          path="/editor/:canvasId?" 
           element={
-            loading ? (
-              <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-xl font-semibold">Loading...</h1>
-                </div>
-              </div>
-            ) : isAuthenticated ? (
-              <Editor />
-            ) : (
-              <Navigate to="/" replace />
-            )
+            isAuthenticated ? <EditorPage /> : <Navigate to="/" replace />
           }
         />
         <Route 
-          path="/preview/:id" 
+          path="/preview/:canvasId" 
           element={
-            loading ? (
-              <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-xl font-semibold">Loading...</h1>
-                </div>
-              </div>
-            ) : isAuthenticated ? (
-              <Preview />
-            ) : (
-              <Navigate to="/" replace />
-            )
+            isAuthenticated ? <PreviewPage /> : <Navigate to="/" replace />
           }
         />
+
       </Routes>
     </Router>
   )

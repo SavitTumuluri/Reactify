@@ -3,7 +3,7 @@ import { IR } from "../core/IR"
 import {saveToDB, loadFromDB} from "./DatabaseService"
 import websocketService from "../../lib/websocketService";
 import { useAuth } from "../../lib/AuthContext";
-import {useState, useEffect} from "react"
+import {useState, useEffect, useCallback} from "react"
 import {HistoryManager} from "./HistoryManager"
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -19,8 +19,16 @@ class GlobalStateManager {
   userId
   connected
   constructor() { this.history = new HistoryManager() }
-  init(ir, setIR) {
+  init(ir, forceSetIR, forceIRUpdate) {
     this.root = ir;
+
+    const setIR = useCallback((newIR,preserveHistory=false) => {
+      this.history.clear()
+      forceSetIR(newIR)
+      forceIRUpdate(v => v+1)
+      
+
+    },[forceSetIR,forceIRUpdate])
     this.setRoot = setIR
     const { user } = useAuth();
     const userId = user?.sub;
@@ -60,9 +68,10 @@ class GlobalStateManager {
       // Load canvas data from DB on mount / id change
     useEffect(() => {
         this.canvasId = canvasId
+        console.log("Canvas loading - this should only happen once")
         stateman.load(canvasId,userId)
     }, [userId, canvasId]);
-    
+    return setIR
 }
 
 

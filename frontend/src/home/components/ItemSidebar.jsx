@@ -35,7 +35,7 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
 
             <div>
               <h3 className="text-2xl font-bold text-white mb-2">{item.title}</h3>
-              <p className="text-gray-400">{isTemplate ? item.category : item.type}</p>
+              <p className="text-gray-400">{isTemplate ? item.category : 'Canvas Design'}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -46,7 +46,7 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
                       <StarIcon className="h-4 w-4 text-yellow-500" />
                       <span className="text-sm text-gray-400">Rating</span>
                     </div>
-                    <p className="text-lg font-semibold text-white">{item.rating}/5</p>
+                    <p className="text-lg font-semibold text-white">{item.rating || 'N/A'}/5</p>
                   </div>
                   
                   <div className="bg-gray-700 rounded-lg p-4">
@@ -54,14 +54,14 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
                       <ArrowDownTrayIcon className="h-4 w-4 text-blue-500" />
                       <span className="text-sm text-gray-400">Downloads</span>
                     </div>
-                    <p className="text-lg font-semibold text-white">{item.downloads}</p>
+                    <p className="text-lg font-semibold text-white">{item.downloads || '0'}</p>
                   </div>
                   
                   <div className="bg-gray-700 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm text-gray-400">Price</span>
                     </div>
-                    <p className="text-lg font-semibold text-white">{item.price}</p>
+                    <p className="text-lg font-semibold text-white">{item.price || 'Free'}</p>
                   </div>
                   
                   <div className="bg-gray-700 rounded-lg p-4">
@@ -69,7 +69,7 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
                       <UserIcon className="h-4 w-4 text-green-500" />
                       <span className="text-sm text-gray-400">Author</span>
                     </div>
-                    <p className="text-lg font-semibold text-white">{item.author}</p>
+                    <p className="text-lg font-semibold text-white">{item.author || 'Unknown'}</p>
                   </div>
                 </>
               ) : (
@@ -78,14 +78,14 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm text-gray-400">Size</span>
                     </div>
-                    <p className="text-lg font-semibold text-white">{item.size}</p>
+                    <p className="text-lg font-semibold text-white">{item.size || 'Auto-saved'}</p>
                   </div>
                   
                   <div className="bg-gray-700 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm text-gray-400">Dimensions</span>
                     </div>
-                    <p className="text-lg font-semibold text-white">{item.dimensions}</p>
+                    <p className="text-lg font-semibold text-white">{item.dimensions || '1200x800'}</p>
                   </div>
                   
                   <div className="bg-gray-700 rounded-lg p-4">
@@ -93,7 +93,7 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
                       <UserIcon className="h-4 w-4 text-green-500" />
                       <span className="text-sm text-gray-400">Created By</span>
                     </div>
-                    <p className="text-lg font-semibold text-white">{item.createdBy}</p>
+                    <p className="text-lg font-semibold text-white">{item.createdBy || 'You'}</p>
                   </div>
                   
                   <div className="bg-gray-700 rounded-lg p-4">
@@ -101,22 +101,22 @@ const ItemSidebar = ({ item, isOpen, onClose, type, onOpenDesign }) => {
                       <CalendarIcon className="h-4 w-4 text-purple-500" />
                       <span className="text-sm text-gray-400">Last Modified</span>
                     </div>
-                    <p className="text-lg font-semibold text-white">{item.lastModified}</p>
+                    <p className="text-lg font-semibold text-white">{item.lastModified || 'Unknown'}</p>
                   </div>
                 </>
               )}
             </div>
 
-          {/* Additional Info */}
-          {isTemplate && (
-            <div className="bg-gray-700 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CalendarIcon className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-400">Last Updated</span>
+            {/* Canvas-specific additional info */}
+            {!isTemplate && item.canvasData && (
+              <div className="bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CalendarIcon className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-400">Canvas ID</span>
+                </div>
+                <p className="text-white font-mono text-sm">{item.id}</p>
               </div>
-              <p className="text-white">{item.lastUpdated}</p>
-            </div>
-          )}
+            )}
 
           {/* Actions */}
           <div className="space-y-3">

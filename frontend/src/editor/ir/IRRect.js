@@ -21,9 +21,9 @@ export class IRRect extends IRView {
   toComponent() { return DragResize; }
 
   toReact() {
-    const posRel = this.get("posRel");
-    const sizeRel = this.get("sizeRel");
-    const angle = this.get("angle");
+    const posRel = this.get("posRel") ?? { x: 0, y: 0 };
+    const sizeRel = this.get("sizeRel") ?? { w: 0.2, h: 0.2 };
+    const angle = this.get("angle") ?? 0;
 
     const styles = this.get("styles") ?? {};
     const backgroundColor = styles.backgroundColor ?? "#ffffff";
@@ -55,9 +55,8 @@ export class IRRect extends IRView {
   }
 
   toImports() {
-    return ['import DragResizeStatic from "./DragResizeStatic"'];
+    return [``];
   }
-
   /**
    * Compute this node's axis-aligned bounding box in px, relative to its parent container.
    * If no parent bounding box is

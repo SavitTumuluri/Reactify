@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { authService } from '../../../lib/authService'
+import { authService } from '../../lib/authService'
 import { 
   MagnifyingGlassIcon, 
   AdjustmentsHorizontalIcon,

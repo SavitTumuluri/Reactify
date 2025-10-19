@@ -27,9 +27,9 @@ export class IRCircle extends IRView {
   }
 
   toReact() {
-    const posRel = this.get("posRel");
-    const sizeRel = this.get("sizeRel");
-    const angle = this.get("angle");
+    const posRel = this.get("posRel") ?? { x: 0, y: 0 };
+    const sizeRel = this.get("sizeRel") ?? { w: 0.2, h: 0.2 };
+    const angle = this.get("angle") ?? 0;
 
     const styles = this.get("styles") ?? {};
     const backgroundColor = styles.backgroundColor ?? "#ffffff";
@@ -60,7 +60,7 @@ export class IRCircle extends IRView {
   }
 
   toImports() {
-    return [`import DragResizeStatic from "./DragResizeStatic.jsx"`];
+    return [``];
   }
 
   toEffects() {

@@ -8,8 +8,8 @@ import {
   PlusIcon,
   TrashIcon
 } from '@heroicons/react/24/outline'
-import { canvasService } from '../../../lib/canvasService'
-import { useAuth } from '../../../lib/AuthContext'
+import { canvaService } from '../../lib/canvaService'
+import { useAuth } from '../../lib/AuthContext'
 
 const YourDesigns = ({ onItemClick }) => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -28,7 +28,8 @@ const YourDesigns = ({ onItemClick }) => {
       try {
         setLoading(true)
         setError(null)
-        const fetchedCanvases = await canvasService.getAllCanvases()
+        const fetchedCanvases = await canvaService.getAllCanvases()
+        console.log('fetchedCanvases:', fetchedCanvases)
         setCanvases(fetchedCanvases)
       } catch (err) {
         console.error('Error fetching canvases:', err)
@@ -47,7 +48,7 @@ const YourDesigns = ({ onItemClick }) => {
         setLoading(true)
         console.log('Creating new canvas:', newCanvasName.trim())
         
-        const newCanvas = await canvasService.createCanvas(newCanvasName.trim())
+        const newCanvas = await canvaService.createCanvas(newCanvasName.trim())
         
         // Add the new canvas to the list
         setCanvases(prev => [...prev, newCanvas])
@@ -73,7 +74,7 @@ const YourDesigns = ({ onItemClick }) => {
         setLoading(true)
         console.log('Deleting canvas:', canvasId)
         
-        await canvasService.deleteCanvas(canvasId)
+        await canvaService.deleteCanvas(canvasId)
         
         // Remove the canvas from the list
         setCanvases(prev => prev.filter(canvas => canvas.canvasId !== canvasId))
@@ -89,39 +90,44 @@ const YourDesigns = ({ onItemClick }) => {
   // Handle loading canvas
   const handleLoadCanvas = (canvas) => {
     console.log('Loading canvas:', canvas)
+    const canvasId = canvas.canvasId || canvas.id || canvas._id
     onItemClick({
-      id: canvas.canvasId,
-      title: canvas.name || `Canvas ${canvas.canvasId?.slice(-8)}`,
+      id: canvasId,
+      title: canvas.name || `Canvas ${canvasId?.slice(-8)}`,
       type: 'canvas',
       canvasData: canvas.canvasData || {},
-      timestamp: canvas.timestamp,
+      timestamp: canvas.timestamp || canvas.updatedAt,
       preview: '🎨',
       size: 'Auto-saved',
       dimensions: canvas.canvasData?.bounds ? `${canvas.canvasData.bounds.w}x${canvas.canvasData.bounds.h}` : '1200x800',
-      lastModified: canvas.timestamp ? new Date(canvas.timestamp).toLocaleDateString() : 'Unknown',
+      lastModified: (canvas.timestamp || canvas.updatedAt) ? new Date(canvas.timestamp || canvas.updatedAt).toLocaleDateString() : 'Unknown',
       createdBy: 'You'
     })
   }
 
   // Filter canvases based on search query
-  const filteredCanvases = canvases.filter(canvas =>
-    canvas && canvas.canvasId && (canvas.name || `Canvas ${canvas.canvasId.slice(-8)}`).toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredCanvases = canvases.filter(canvas => {
+    const canvasId = canvas.canvasId || canvas.id || canvas._id
+    return canvas && canvasId && (canvas.name || `Canvas ${canvasId.slice(-8)}`).toLowerCase().includes(searchQuery.toLowerCase())
+  })
 
   // Convert canvases to design format for display
-  const canvasDesigns = filteredCanvases.map(canvas => ({
-    id: canvas.canvasId,
-    title: canvas.name || `Canvas ${canvas.canvasId?.slice(-8) || 'Unknown'}`,
-    status: 'blue',
-    time: canvas.timestamp ? new Date(canvas.timestamp).toLocaleDateString() : 'Unknown',
-    preview: '🎨',
-    type: 'canvas',
-    size: 'Auto-saved',
-    dimensions: canvas.canvasData?.bounds ? `${canvas.canvasData.bounds.w}x${canvas.canvasData.bounds.h}` : '1200x800',
-    lastModified: canvas.timestamp ? new Date(canvas.timestamp).toLocaleDateString() : 'Unknown',
-    createdBy: 'You',
-    canvasData: canvas.canvasData || {}
-  }))
+  const canvasDesigns = filteredCanvases.map(canvas => {
+    const canvasId = canvas.canvasId || canvas.id || canvas._id
+    return {
+      id: canvasId,
+      title: canvas.name || `Canvas ${canvasId?.slice(-8) || 'Unknown'}`,
+      status: 'blue',
+      time: (canvas.timestamp || canvas.updatedAt) ? new Date(canvas.timestamp || canvas.updatedAt).toLocaleDateString() : 'Unknown',
+      preview: '🎨',
+      type: 'canvas',
+      size: 'Auto-saved',
+      dimensions: canvas.canvasData?.bounds ? `${canvas.canvasData.bounds.w}x${canvas.canvasData.bounds.h}` : '1200x800',
+      lastModified: (canvas.timestamp || canvas.updatedAt) ? new Date(canvas.timestamp || canvas.updatedAt).toLocaleDateString() : 'Unknown',
+      createdBy: 'You',
+      canvasData: canvas.canvasData || {}
+    }
+  })
 
   const getStatusColor = (status) => {
     const colors = {

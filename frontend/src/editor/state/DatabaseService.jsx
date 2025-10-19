@@ -16,10 +16,9 @@ export async function saveToDB(data, userId, canvasId, canvasName = null) {
   }
 
   try {
-    // Create canvas data object
+    // Standardize payload: store IR under `ir`
     const canvasData = {
-      irString: data, // Store as a string
-      timestamp: new Date().toISOString(),
+      ir: (data && data.ir) ? data.ir : data,
     };
 
     // Save via WebSocket
@@ -64,18 +63,18 @@ export async function loadFromDB(userId, canvasId) {
         cleanup();
 
         try {
-          // Parse the canvas data
-          const canvasData = typeof data.canvasData === 'string'
+          // Parse the canvas data (server stores JSON string)
+          const parsed = typeof data.canvasData === 'string'
             ? JSON.parse(data.canvasData)
             : data.canvasData;
 
-          // Extract the string
-          const result = canvasData?.irString || '';
-          console.log('loadFromDB: Data loaded successfully', { userId, canvasId, length: result.length });
-          resolve(result);
+          // Return IR object when available
+          const irObject = parsed?.ir ?? parsed ?? null;
+          console.log('loadFromDB: Data loaded successfully', { userId, canvasId });
+          resolve(irObject);
         } catch (error) {
           console.error('loadFromDB: Error parsing data', error);
-          resolve('');
+          resolve(null);
         }
       }
     };

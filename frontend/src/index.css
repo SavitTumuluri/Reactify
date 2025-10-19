@@ -62,10 +62,6 @@ input::placeholder {
 
   body {
     @apply bg-background text-foreground;
-    background-image: url('https://ik.imagekit.io/lrigu76hy/tailark/night-background.jpg?updatedAt=1745733451120');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
   }
 
   html {

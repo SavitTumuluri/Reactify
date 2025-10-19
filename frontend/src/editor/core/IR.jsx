@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import getStateman from "../state/GlobalStateManager";   // ← remove if unused
 
 import {deepEqual} from "./deepequal.js"
+
 const stateman = getStateman()
 const history = stateman.history
 // helper to avoid circular init issues: resolve history only when needed
@@ -40,10 +41,7 @@ export class IR {
       return typeof initialValue === "function" ? initialValue() : initialValue
     })
 
-    // keep IR mirror in sync after React updates
-    useEffect(() => {
-      this._data[key] = value
-    }, [key, value])
+    
 
     // setter that records history and clears redo
     const set = useCallback((next) => {
@@ -54,6 +52,7 @@ export class IR {
         //We control the this._data state
         return
       }
+      this._data[key] = computed
       reactSet(prev => {        
         if (history) {
           history.pushUndo(this, key, prev)   // restore-to value
@@ -74,8 +73,16 @@ export class IR {
    * No history writes (prevents recursion).
    */
   undoStateSet(key, valueToRestore) {
-    const raw = this._rawSetters.get(key)
-    if (raw) raw(valueToRestore)
+    const raw = this._rawSetters.get(key);
+    if (raw) {
+      this._data[key] =valueToRestore
+      raw(valueToRestore);
+      
+    } else {
+      console.warn("Attempting to write to a unlinked value")
+      // Component is detached/unmounted: update the IR snapshot directly.
+      this._data[key] = valueToRestore;
+    }
   }
 
   get(key) { return this._data[key] }
@@ -112,6 +119,12 @@ export class IR {
   }
   resetElementId() {
     this._data.elementId = `element-${this.constructor.name}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+  toString() {
+    if(this._data.elementId) {
+      return this._data.elementId
+    }
+    return `element-${this.constructor.name}-{unnamed}`
   }
 
 }
@@ -154,6 +167,10 @@ export default function TestBaseIRComponent(props) {
   toImports() {
     return [`import {useState,useRef,useEffect} from "react"`]
   }
+  unlink(direction = "do") {
+    const parent = abstractParent;
+    history.pushUndoDelete(this,parent,0)
+  }
 }
 
 export class IRView extends IR {
@@ -171,7 +188,7 @@ export class IRView extends IR {
     }
     return `<div>${parts.join("")}</div>\n`
   }
-  unlink() {
+  unlink(direction = "do") {
     const parent = this.parent;
     const idx = parent.children.indexOf(this);
     if (idx !== -1) {
@@ -179,5 +196,8 @@ export class IRView extends IR {
       parent.forceReRender()
     }
     history.pushUndoDelete(this,parent,idx)
+  }
+  relink(parent, toIndex, direction = "do") {
+
   }
 }

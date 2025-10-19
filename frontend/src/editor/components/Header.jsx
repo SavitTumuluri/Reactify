@@ -15,6 +15,7 @@ import {
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { motion } from 'motion/react';
+import { uploadImageToS3 } from '../../lib/cdnService';
 import getStateManager from '../state/GlobalStateManager';
 
 const stateman = getStateManager()
@@ -26,7 +27,10 @@ export default function Header({
   isConnected,
   isSaving,
   onOpenGallery,
-  onAddElement
+  onAddElement,
+  onOpenAgent,
+  // ⭐ NEW:
+  onExportPNG
 }) {
   const fileInputRef = React.useRef(null);
 
@@ -36,7 +40,7 @@ export default function Header({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      console.log('File upload not implemented yet');
+      await uploadImageToS3(file, { prefix: 'uploads/' });
       // reset input so selecting the same file later retriggers change
       e.target.value = '';
       // Open gallery after upload so user can select the uploaded image
@@ -121,9 +125,7 @@ export default function Header({
                       {({ active }) => (
                         <button
                           onClick={() => onAddElement?.("rectangle")}
-                          className={`${
-                            active ? 'bg-gray-700/50 text-white' : 'text-gray-300'
-                          } group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
+                          className={`${active ? 'bg-gray-700/50 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
                         >
                           <Square3Stack3DIcon className="w-4 h-4 mr-3" />
                           Rectangle
@@ -134,9 +136,7 @@ export default function Header({
                       {({ active }) => (
                         <button
                           onClick={() => onAddElement?.("line")}
-                          className={`${
-                            active ? 'bg-gray-700/50 text-white' : 'text-gray-300'
-                          } group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
+                          className={`${active ? 'bg-gray-700/50 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
                         >
                           <div className="w-4 h-0.5 mr-3 bg-gray-300" />
                           Line
@@ -147,9 +147,7 @@ export default function Header({
                       {({ active }) => (
                         <button
                           onClick={() => onAddElement?.("circle")}
-                          className={`${
-                            active ? 'bg-gray-700/50 text-white' : 'text-gray-300'
-                          } group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
+                          className={`${active ? 'bg-gray-700/50 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
                         >
                           <div className="w-4 h-4 mr-3 rounded-full bg-gray-300" />
                           Circle
@@ -160,9 +158,7 @@ export default function Header({
                       {({ active }) => (
                         <button
                           onClick={() => onAddElement?.("triangle")}
-                          className={`${
-                            active ? 'bg-gray-700/50 text-white' : 'text-gray-300'
-                          } group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
+                          className={`${active ? 'bg-gray-700/50 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
                         >
                           <div className="w-4 h-4 mr-3 bg-gray-300" style={{ clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }} />
                           Triangle
@@ -173,9 +169,7 @@ export default function Header({
                       {({ active }) => (
                         <button
                           onClick={() => onAddElement?.("star")}
-                          className={`${
-                            active ? 'bg-gray-700/50 text-white' : 'text-gray-300'
-                          } group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
+                          className={`${active ? 'bg-gray-700/50 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-150`}
                         >
                           <div className="w-4 h-4 mr-3 bg-gray-300" style={{ clipPath: "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)" }} />
                           Star
@@ -186,6 +180,7 @@ export default function Header({
                 </Menu.Items>
               </Transition>
             </Menu>
+
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 onClick={() => onAddElement?.("text")}
@@ -198,6 +193,7 @@ export default function Header({
                 <span className="text-sm font-medium">Text</span>
               </Button>
             </motion.div>
+
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 onClick={() => onAddElement?.("aiComponent")}
@@ -210,6 +206,7 @@ export default function Header({
                 <span className="text-sm font-medium">AI Component</span>
               </Button>
             </motion.div>
+
             {/* Image Insertion Dropdown Menu */}
             <Menu as="div" className="relative inline-block text-left">
               <Menu.Button as={Fragment}>
@@ -242,9 +239,7 @@ export default function Header({
                       {({ active }) => (
                         <button
                           onClick={handleUploadImage}
-                          className={`${
-                            active ? 'bg-gray-700 text-white' : 'text-gray-300'
-                          } group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
+                          className={`${active ? 'bg-gray-700 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
                         >
                           <CloudArrowUpIcon className="mr-3 h-4 w-4" />
                           Upload Image
@@ -255,9 +250,7 @@ export default function Header({
                       {({ active }) => (
                         <button
                           onClick={handleOpenGallery}
-                          className={`${
-                            active ? 'bg-gray-700 text-white' : 'text-gray-300'
-                          } group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
+                          className={`${active ? 'bg-gray-700 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
                         >
                           <PhotoIcon className="mr-3 h-4 w-4" />
                           Gallery
@@ -280,16 +273,8 @@ export default function Header({
             className="hidden"
             onChange={handleFileChange}
           />
-          {/* <Button
-            onClick={() => stateman.save()}
-            variant="default"
-            size="sm"
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-            disabled={!isConnected}
-            title="Manually save canvas"
-          >
-            <span>{isSaving ? 'Saving...' : 'Save Canvas'}</span>
-          </Button> */}
+
+
           {/* Settings Dropdown Menu */}
           <Menu as="div" className="relative inline-block text-left">
             <Menu.Button as={Fragment}>
@@ -300,7 +285,7 @@ export default function Header({
                   className="flex items-center space-x-2 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/50 backdrop-blur-sm"
                 >
                   <AdjustmentsHorizontalIcon className="w-4 h-4" />
-                  <span className="text-sm font-medium">Settings</span>
+                  <span className="text-sm font-medium">Actions</span>
                   <ChevronDownIcon className="w-4 h-4" />
                 </Button>
               </motion.div>
@@ -319,27 +304,37 @@ export default function Header({
                 <div className="py-1">
                   <Menu.Item>
                     {({ active }) => (
-                        <button
-                          onClick={onPreviewAndExport}
-                          className={`${
-                            active ? 'bg-gray-700 text-white' : 'text-gray-300'
-                          } group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
-                        >
-                          <EyeIcon className="mr-3 h-4 w-4" />
-                          Preview & Export Code
-                        </button>
+                      <button
+                        onClick={onPreviewAndExport}
+                        className={`${active ? 'bg-gray-700 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
+                      >
+                        <EyeIcon className="mr-3 h-4 w-4" />
+                        Preview & Export React
+                      </button>
                     )}
                   </Menu.Item>
+
+                  {/* ⭐ NEW: Export to PNG via menu (optional second entry point) */}
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => onExportPNG?.()}
+                        className={`${active ? 'bg-gray-700 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
+                      >
+                        <PhotoIcon className="mr-3 h-4 w-4" />
+                        Export to PNG
+                      </button>
+                    )}
+                  </Menu.Item>
+
                   <Menu.Item>
                     {({ active }) => (
                       <button
                         onClick={() => {
                           // Handle exit canvas - you may want to add a prop for this
-                          window.location.href = '/console';
+                          window.location.href = '/home';
                         }}
-                        className={`${
-                          active ? 'bg-gray-700 text-white' : 'text-gray-300'
-                        } group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
+                        className={`${active ? 'bg-gray-700 text-white' : 'text-gray-300'} group flex w-full items-center px-4 py-2 text-sm transition-colors duration-200`}
                       >
                         <ArrowRightOnRectangleIcon className="mr-3 h-4 w-4" />
                         Exit Canvas
@@ -350,6 +345,18 @@ export default function Header({
               </Menu.Items>
             </Transition>
           </Menu>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                onClick={() => onOpenAgent?.()}
+                variant="secondary"
+                size="sm"
+                className="flex items-center space-x-2 bg-indigo-600/70 hover:bg-indigo-600 border border-indigo-500/50 backdrop-blur-sm"
+                title="Ask Agent"
+              >
+                <SparklesIcon className="w-4 h-4" />
+                <span className="text-sm font-medium">Ask Agent</span>
+              </Button>
+            </motion.div>
         </div>
       </div>
     </motion.header>

@@ -31,14 +31,12 @@ export class IRLine extends IRView {
   toComponent() { return null; }
 
   toImports() {
-    return [
-      'import DragResizeStatic from "./DragResizeStatic"',
-    ];
+    return [``];
   }
 
   toReact() {
-    const posRel = this.get("posRel");
-    const sizeRel = this.get("sizeRel");
+    const posRel = this.get("posRel") ?? { x: 0, y: 0 };
+    const sizeRel = this.get("sizeRel") ?? { w: 0.2, h: 0.2 };
     const angle = this.get("angle") ?? 0;
     const curved = !!this.get("curved");
     const curvePartitions = Math.max(1, Math.min(2, parseInt(this.get("curvePartitions") ?? 2, 10)));

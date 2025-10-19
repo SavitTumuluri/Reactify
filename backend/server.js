@@ -7,6 +7,7 @@ import { createServer } from 'http';
 import routes from './src/routes/index.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { SocketHandler } from './src/websocket/socketHandler.js';
 
 // Load environment variables
 dotenv.config();
@@ -34,7 +35,10 @@ const client = new DynamoDBClient({
 
 export const docClient = DynamoDBDocumentClient.from(client);
 
+// Initialize Socket.IO
+const socketHandler = new SocketHandler(server);
 
 server.listen(PORT, () => {
-  console.log("Server running!");
+  console.log(`Server running on port ${PORT}!`);
+  console.log(`Socket.IO server initialized`);
 });

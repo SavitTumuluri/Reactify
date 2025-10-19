@@ -31,13 +31,6 @@ export default function reorderByOverlap({ ir, history, setSelected }, node, dir
   const finalIdx = Math.max(0, Math.min(targetIdx, list.length));
   if (finalIdx === fromIdx) return;
 
-  if (typeof history?.moveWithHistory === "function") {
-    history.moveWithHistory(node, parent, finalIdx);
-  } else {
-    list.splice(fromIdx, 1);
-    const insertAt = Math.max(0, Math.min(finalIdx, list.length));
-    list.splice(insertAt, 0, node);
-    parent.forceReRender?.();
-  }
+  history.moveWithHistory(node, parent, finalIdx);
   setSelected(node);
 }

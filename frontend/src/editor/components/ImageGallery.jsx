@@ -1,232 +1,341 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '../../components/ui/button';
-import { XMarkIcon, TrashIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
-import { motion, AnimatePresence } from 'motion/react';
+import React from 'react';
+import { listS3Images, deleteS3Files } from '../../lib/cdnService';
 
-// Mock functions for now - replace with actual S3 service when ready
-const listS3Images = async ({ prefix, token }) => {
-  // Mock implementation - replace with actual S3 service
-  console.log('Mock listS3Images called with:', { prefix, token });
-  return {
-    images: [
-      { key: 'uploads/image1.jpg', url: 'https://via.placeholder.com/300x200', name: 'image1.jpg' },
-      { key: 'uploads/image2.jpg', url: 'https://via.placeholder.com/300x200', name: 'image2.jpg' },
-      { key: 'uploads/image3.jpg', url: 'https://via.placeholder.com/300x200', name: 'image3.jpg' },
-    ]
+const IMAGE_EXTS = ['jpg','jpeg','png','gif','webp','bmp','tiff','svg'];
+const VIDEO_EXTS = ['mp4','mov','webm','avi','mkv','m4v','qt'];
+
+function getExt(key = '') {
+  const m = key.toLowerCase().match(/\.([a-z0-9]+)(?:\?.*)?$/i);
+  return m ? m[1] : '';
+}
+function isVideo(key) { return VIDEO_EXTS.includes(getExt(key)); }
+function isImage(key) { return IMAGE_EXTS.includes(getExt(key)); }
+
+function DurationBadge({ seconds }) {
+  if (!Number.isFinite(seconds)) return null;
+  const mm = Math.floor(seconds / 60);
+  const ss = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return (
+    <span className="absolute bottom-1 right-1 text-[10px] px-1.5 py-0.5 rounded bg-black/70 text-white">
+      {mm}:{ss}
+    </span>
+  );
+}
+
+function CheckOverlay({ checked }) {
+  if (!checked) return null;
+  return (
+    <span className="absolute inset-0 bg-blue-500/20 pointer-events-none">
+      <span className="absolute top-1 right-1 inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600">
+        <svg viewBox="0 0 24 24" width="14" height="14" className="fill-white">
+          <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+        </svg>
+      </span>
+    </span>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <span className="absolute inset-0 flex items-center justify-center">
+      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/60">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className="fill-white">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </span>
+    </span>
+  );
+}
+
+/** Small top-right trash button that sits over the tile content */
+function DeletePill({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="absolute top-1 right-1 z-10 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-600/90 text-white text-[10px] opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+      title="Delete"
+    >
+      <svg viewBox="0 0 24 24" width="12" height="12" className="fill-white">
+        <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 18a2 2 0 0 1-2-2V9h8v10a2 2 0 0 1-2 2H10z"/>
+      </svg>
+      Delete
+    </button>
+  );
+}
+
+/**
+ * Unified tile wrapper to avoid nested <button> issues:
+ * - Outer container: div.group.relative (clickable area inside)
+ * - Inner "content button" covers the tile for select/preview
+ * - Separate absolute DeletePill in the top-right (z-10)
+ */
+function VideoThumb({ item, onPrimaryClick, selectable, selected, onToggleSelect, onDeleteOne }) {
+  const videoRef = React.useRef(null);
+  const [duration, setDuration] = React.useState(null);
+
+  const handleLoadedMetadata = () => {
+    const d = videoRef.current?.duration;
+    if (Number.isFinite(d)) setDuration(d);
   };
-};
-
-const deleteS3Files = async (keys) => {
-  // Mock implementation - replace with actual S3 service
-  console.log('Mock deleteS3Files called with:', keys);
-  return { success: true };
-};
-
-export default function ImageGallery({ isOpen, onClose, onSelectImage }) {
-  const [images, setImages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [selectedImages, setSelectedImages] = useState([]);
-
-  useEffect(() => {
-    if (isOpen) {
-      loadImages();
+  const handleMouseEnter = () => {
+    const v = videoRef.current;
+    if (v) {
+      if (v.currentTime < 0.05) v.currentTime = 0.05;
+      v.play().catch(() => {});
     }
-  }, [isOpen]);
+  };
+  const handleMouseLeave = () => {
+    const v = videoRef.current;
+    if (v) v.pause();
+  };
 
-  const loadImages = async () => {
-    setLoading(true);
-    setError(null);
+  const previewSrc = item.url.includes('#') ? item.url : `${item.url}#t=0.1`;
+  const clickHandler = () => {
+    if (selectable) onToggleSelect?.(item.key);
+    else onPrimaryClick?.(item);
+  };
+
+  const deleteHandler = async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    await onDeleteOne?.(item.key);
+  };
+
+  return (
+    <div
+      className={`group relative rounded overflow-hidden bg-gray-800 border h-[144px]
+        ${selected ? 'border-blue-500' : 'border-gray-700'}`}
+      title={item.key}
+    >
+      <DeletePill onClick={deleteHandler} />
+      <button
+        type="button"
+        onClick={clickHandler}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className="absolute inset-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <video
+          ref={videoRef}
+          src={previewSrc}
+          className="block w-full h-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+          onLoadedMetadata={handleLoadedMetadata}
+          controls={false}
+          disablePictureInPicture
+          controlsList="nodownload noremoteplayback"
+        />
+        <PlayIcon />
+        <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/70 text-white">
+          Video
+        </span>
+        <DurationBadge seconds={duration} />
+        <CheckOverlay checked={!!selected} />
+      </button>
+    </div>
+  );
+}
+
+function ImageThumb({ item, onPrimaryClick, selectable, selected, onToggleSelect, onDeleteOne }) {
+  const clickHandler = () => {
+    if (selectable) onToggleSelect?.(item.key);
+    else onPrimaryClick?.(item);
+  };
+
+  const deleteHandler = async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    await onDeleteOne?.(item.key);
+  };
+
+  return (
+    <div
+      className={`group relative rounded overflow-hidden bg-gray-800 border h-[144px]
+        ${selected ? 'border-blue-500' : 'border-gray-700'}`}
+      title={item.key}
+    >
+      <DeletePill onClick={deleteHandler} />
+      <button
+        type="button"
+        className="absolute inset-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onClick={clickHandler}
+      >
+        {/* Even if the image is huge, it stays clipped to the tile; overlay sits above with z-10 */}
+        <img src={item.url} alt={item.key} className="block w-full h-full object-cover" />
+        <CheckOverlay checked={!!selected} />
+      </button>
+    </div>
+  );
+}
+
+export default function ImageGallery({ open, onClose, onSelect }) {
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const [nextToken, setNextToken] = React.useState(null);
+
+  // Batch clean-up mode (kept)
+  const [selectMode, setSelectMode] = React.useState(false);
+  const [selectedKeys, setSelectedKeys] = React.useState(new Set());
+  const [deleting, setDeleting] = React.useState(false);
+
+  const loadImages = React.useCallback(async (token) => {
     try {
-      const token = localStorage.getItem('access_token');
+      setLoading(true);
       const res = await listS3Images({ prefix: 'uploads/', token });
-      setImages(res.images || []);
-    } catch (err) {
-      console.error('Failed to load images:', err);
-      setError('Failed to load images');
+      setItems((prev) => (token ? [...prev, ...res.items] : res.items));
+      setNextToken(res.nextToken);
+    } catch (e) {
+      console.error('Failed to load media', e);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleImageSelect = (image) => {
-    if (onSelectImage) {
-      onSelectImage(image);
-      onClose();
+  React.useEffect(() => {
+    if (open) {
+      setSelectMode(false);
+      setSelectedKeys(new Set());
+      loadImages();
     }
+  }, [open, loadImages]);
+
+  const toggleSelect = (key) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
-  const handleImageDelete = async (key) => {
+  // Single-item delete used by the per-tile trash button
+  const deleteOne = async (key) => {
+    const ok = window.confirm(`Delete this file?\n${key}\nThis cannot be undone.`);
+    if (!ok) return;
     try {
+      // Optimistic update after server confirms
       await deleteS3Files([key]);
-      setImages(images.filter(img => img.key !== key));
+      setItems((prev) => prev.filter((it) => it.key !== key));
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     } catch (err) {
-      console.error('Failed to delete image:', err);
+      console.error('Delete failed', err);
+      alert('Failed to delete. Please try again.');
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedImages.length === 0) return;
-    
+  // Batch delete (existing header flow)
+  const handleDeleteBatch = async () => {
+    const keys = Array.from(selectedKeys);
+    if (keys.length === 0) return;
+    const ok = window.confirm(`Delete ${keys.length} file(s)? This cannot be undone.`);
+    if (!ok) return;
     try {
-      const keys = selectedImages.map(img => img.key);
+      setDeleting(true);
       await deleteS3Files(keys);
-      setImages(images.filter(img => !keys.includes(img.key)));
-      setSelectedImages([]);
+      setItems((prev) => prev.filter((it) => !selectedKeys.has(it.key)));
+      setSelectMode(false);
+      setSelectedKeys(new Set());
     } catch (err) {
-      console.error('Failed to delete images:', err);
+      console.error('Delete failed', err);
+      alert('Failed to delete. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const toggleImageSelection = (image) => {
-    setSelectedImages(prev => 
-      prev.some(img => img.key === image.key)
-        ? prev.filter(img => img.key !== image.key)
-        : [...prev, image]
-    );
-  };
-
-  if (!isOpen) return null;
+  if (!open) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-700">
-            <h2 className="text-xl font-semibold text-white">Image Gallery</h2>
-            <div className="flex items-center gap-2">
-              {selectedImages.length > 0 && (
-                <Button
-                  onClick={handleBulkDelete}
-                  variant="destructive"
-                  size="sm"
-                  className="flex items-center gap-2"
+    <div className="fixed inset-0 z-40">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute right-0 top-0 h-full w-[420px] bg-gray-900 border-l border-gray-700 shadow-xl flex flex-col">
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-200">My Media</h3>
+
+          <div className="flex items-center gap-2">
+            {selectMode ? (
+              <>
+                <button
+                  onClick={handleDeleteBatch}
+                  disabled={!selectedKeys.size || deleting}
+                  className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
                 >
-                  <TrashIcon className="w-4 h-4" />
-                  Delete ({selectedImages.length})
-                </Button>
-              )}
-              <Button
-                onClick={onClose}
-                variant="ghost"
-                size="sm"
-                className="text-gray-400 hover:text-white"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                  <p className="text-gray-400">Loading images...</p>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <p className="text-red-400 mb-4">{error}</p>
-                  <Button onClick={loadImages} variant="outline">
-                    Retry
-                  </Button>
-                </div>
-              </div>
-            ) : images.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <CloudArrowUpIcon className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                  <p className="text-gray-400 mb-2">No images found</p>
-                  <p className="text-sm text-gray-500">Upload some images to get started</p>
-                </div>
-              </div>
+                  {deleting ? 'Deleting…' : `Delete (${selectedKeys.size})`}
+                </button>
+                <button
+                  onClick={() => { setSelectMode(false); setSelectedKeys(new Set()); }}
+                  disabled={deleting}
+                  className="px-3 py-1 text-xs rounded bg-gray-800 text-gray-200 border border-gray-700 hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+              </>
             ) : (
-              <div className="p-4 h-full overflow-y-auto">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {images.map((image) => (
-                    <motion.div
-                      key={image.key}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                        selectedImages.some(img => img.key === image.key)
-                          ? 'border-blue-500'
-                          : 'border-gray-700 hover:border-gray-600'
-                      }`}
-                      onClick={() => handleImageSelect(image)}
-                    >
-                      <img
-                        src={image.url}
-                        alt={image.name}
-                        className="w-full h-24 object-cover"
-                      />
-                      
-                      {/* Selection overlay */}
-                      {selectedImages.some(img => img.key === image.key) && (
-                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">✓</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Hover actions */}
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleImageSelection(image);
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          className="w-8 h-8 p-0 bg-black/50 hover:bg-black/70 text-white"
-                        >
-                          {selectedImages.some(img => img.key === image.key) ? '✓' : '○'}
-                        </Button>
-                      </div>
-
-                      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleImageDelete(image.key);
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          className="w-8 h-8 p-0 bg-red-500/80 hover:bg-red-500 text-white"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </Button>
-                      </div>
-
-                      {/* Image name */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                        <p className="text-white text-xs truncate">{image.name}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
+              <button
+                onClick={() => setSelectMode(true)}
+                className="px-3 py-1 text-xs rounded bg-gray-800 text-gray-200 border border-gray-700 hover:bg-gray-700"
+                title="Clean up (batch select)"
+              >
+                Clean up
+              </button>
             )}
+            <button onClick={onClose} className="text-gray-400 hover:text-white" title="Close">✕</button>
           </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+        </div>
+
+        <div className="flex-1 overflow-auto p-3 grid grid-cols-2 gap-3 auto-rows-[144px]">
+          {items.map((it) => {
+            const selectable = selectMode;
+            const selected = selectedKeys.has(it.key);
+            if (isVideo(it.key)) {
+              return (
+                <VideoThumb
+                  key={it.key}
+                  item={it}
+                  onPrimaryClick={onSelect}
+                  selectable={selectable}
+                  selected={selected}
+                  onToggleSelect={toggleSelect}
+                  onDeleteOne={deleteOne}
+                />
+              );
+            }
+            if (isImage(it.key)) {
+              return (
+                <ImageThumb
+                  key={it.key}
+                  item={it}
+                  onPrimaryClick={onSelect}
+                  selectable={selectable}
+                  selected={selected}
+                  onToggleSelect={toggleSelect}
+                  onDeleteOne={deleteOne}
+                />
+              );
+            }
+            return null;
+          })}
+          {loading && <div className="col-span-2 text-center text-xs text-gray-400">Loading…</div>}
+        </div>
+
+        <div className="p-3 border-t border-gray-700 flex justify-end">
+          {nextToken && !selectMode && (
+            <button
+              onClick={() => loadImages(nextToken)}
+              className="px-3 py-1 text-sm bg-gray-800 border border-gray-700 rounded hover:bg-gray-700"
+            >
+              Load more
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
